@@ -40,7 +40,7 @@ local function make_env(phon, det, ecdict, cedict, maxlen)
         ecdict = ecdict or { convert_word = function(self, w) return ECDICT[w] end },
         cedict = cedict or { convert_word = function(self, w) return CEDICT[w] end },
         enable_e2c = true, enable_c2e = true,
-        max_defs = 2, max_length = maxlen or 45,
+        max_defs = 3, max_length = maxlen or 45,
         comment_prefix = " ", comment_suffix = "",
     }
 end
@@ -180,7 +180,7 @@ def main():
                 print("  FAIL %-22s\n       got =%r\n       want=%r" % (name, got, want))
                 bad += 1
         elif name == "e2c-maxdefs-截断":
-            if got.startswith("一；二") and "…" in got and "三" not in got and "四" not in got \
+            if got.startswith("一；二；三") and "…" in got and "四" not in got \
                     and "/p1/" in got:
                 print("  PASS %-22s %r" % (name, got))
                 ok += 1

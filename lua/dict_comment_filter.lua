@@ -4,7 +4,8 @@
 功能：
 1. 输入中文字词时，在候选词 comment 中显示对应英文释义（基于 CC-CEDICT 词典）。
 2. 输入英文单词时，在候选词 comment 中显示对应中文释义（基于 ECDICT 词典）。
-3. 释义数量限制（按释义项个数截断，如保留前 2 条释义，超出追加省略号“…”）。
+3. 释义数量限制（按释义项个数截断，如保留前 3 条释义，超出追加省略号“…”）。
+   拆词后可由顺位上屏器（comment_rank_commit.lua）用 Ctrl+E/R/T 逐条上屏。
 4. 安全 UTF-8 分割：杜绝全角标点字节碰撞导致的汉字乱码（黑框问号）。
 5. 全局单例缓存（Singleton Cache）：多软件切换零延迟。
 6. 与现有候选 comment（错音错字提示、Emoji、拆字编码等）无缝共存。
@@ -273,8 +274,8 @@ function M.init(env)
     env.enable_e2c = config:get_bool(ns .. "/enable_english_to_chinese")
     if env.enable_e2c == nil then env.enable_e2c = true end
 
-    -- 释义显示项数（默认保留前 2 条释义）
-    env.max_defs = config:get_int(ns .. "/max_defs") or 2
+    -- 释义显示项数（默认保留前 3 条释义）
+    env.max_defs = config:get_int(ns .. "/max_defs") or 3
     -- 最大字符长度安全兜底（默认 45 字符）
     env.max_length = config:get_int(ns .. "/max_length") or 45
 

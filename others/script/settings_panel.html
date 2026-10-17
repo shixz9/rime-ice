@@ -392,8 +392,8 @@ pre.log{
     <div class="card">
       <div class="card-title">顺位上屏英文译词（自定义项）</div>
       <div class="row">
-        <div class="grow"><div class="label">启用 Ctrl+E / Ctrl+R 顺位上屏</div>
-          <div class="d">对<b>第一个中文候选词</b>的英文注释（CEDICT）按「; 」拆词后顺位上屏；无注释时按键不输出任何内容</div></div>
+        <div class="grow"><div class="label">启用 Ctrl+E / Ctrl+R / Ctrl+T 顺位上屏</div>
+          <div class="d">对<b>第一个中文候选词</b>的英文注释（CEDICT，最多 3 条）按「; 」拆词后顺位上屏；无注释时按键不输出任何内容</div></div>
         <div class="ctl"><label class="sw"><input type="checkbox" id="rank-commit"><i></i></label></div>
       </div>
       <div class="row">
@@ -405,6 +405,11 @@ pre.log{
         <div class="grow"><div class="label"><kbd>Ctrl</kbd><kbd>R</kbd>　上屏第 2 个英文译词</div>
           <div class="d">如高亮「你好」（注释 hello; hi）→ 上屏 <b>hi</b>；注释不足 2 段时按键放行不动作</div></div>
         <div class="ctl"><span class="muted">自定义项 ②</span></div>
+      </div>
+      <div class="row">
+        <div class="grow"><div class="label"><kbd>Ctrl</kbd><kbd>T</kbd>　上屏第 3 个英文译词</div>
+          <div class="d">如高亮「拟」（注释 plan; intend; draft）→ 上屏 <b>draft</b>；注释不足 3 段时按键放行不动作</div></div>
+        <div class="ctl"><span class="muted">自定义项 ③</span></div>
       </div>
     </div>
     <div class="card">
