@@ -1,83 +1,75 @@
 # 输入行为设置（自定义补丁）
-# 注意：不要直接改 default.yaml —— 那是雾凇拼音仓库文件，更新会被覆盖；
-# 一律写在这个 default.custom.yaml 里
+# 由「Rime 设置面板」生成于 2026-10-17 13:10；手动修改会被下次面板保存覆盖
+# 注意：不要直接改 default.yaml —— 那是上游仓库文件，git pull 会被覆盖；一律写在这里
+# 上游校验：ruby others/script/check_custom_patch.rb
 patch:
-  # ── 方案列表（P1 修复 2026-10-17）────────────────────────────
-  # 上游 fork 已删除 t9.schema.yaml（提交 41713fa del t9），但 default.yaml
-  # 的 schema_list 仍引用 t9，导致每次部署告警、方案选单出现不可用项。
-  # Rime 对列表是整体替换而非合并，必须完整重列全部生效方案；此处去掉 t9。
-  # 上游今后增删方案时：先同步 default.yaml，再在此处增删对应行。
-  # 校验：ruby others/script/check_custom_patch.rb
+  # 方案列表：Rime 对列表为整体替换，须完整重列；t9 已随其方案文件删除而去除
   schema_list:
-    - schema: rime_ice               # 雾凇拼音（全拼）
-    - schema: double_pinyin          # 自然码双拼
-    - schema: double_pinyin_abc      # 智能 ABC 双拼
-    - schema: double_pinyin_mspy     # 微软双拼
-    - schema: double_pinyin_sogou    # 搜狗双拼
-    - schema: double_pinyin_flypy    # 小鹤双拼
-    - schema: double_pinyin_ziguang  # 紫光双拼
-    - schema: double_pinyin_jiajia   # 拼音加加双拼
+    - schema: rime_ice
+    - schema: double_pinyin
+    - schema: double_pinyin_abc
+    - schema: double_pinyin_mspy
+    - schema: double_pinyin_sogou
+    - schema: double_pinyin_flypy
+    - schema: double_pinyin_ziguang
+    - schema: double_pinyin_jiajia
 
   menu:
     page_size: 9        # 每页候选词数量
 
   switcher:
     hotkeys:
-      - "Control+grave"   # Ctrl+` 切换输入方案（ grave 就是 Tab 上面那个键）
+      - "Control+grave"   # Ctrl+` 切换输入方案
       - "F4"
 
   ascii_composer:
     good_old_caps_lock: true   # Caps Lock 切换中英
     switch_key:
-      Shift_L: commit_code     # 左 Shift：把已敲的拼音上屏并转英文
-      Shift_R: inline_ascii    # 右 Shift：临时打英文，回车回到中文
+      Shift_L: commit_code   # 左 Shift：上屏拼音编码转英文
+      Shift_R: inline_ascii  # 右 Shift：临时英文，回车回中文
 
-  # ⚠️ Rime 对列表是整体替换不是追加，所以这里必须包含原 default.yaml 里
-  #    所有生效的绑定，再叠加自定义；照抄自雾凇拼音 default.yaml 的 key_binder 段
+  # ⚠️ Rime 对列表是整体替换不是追加，以下包含上游默认绑定 + 自定义；
+  #    上游 key_binder 变更时执行 check_custom_patch.rb 对照同步
   key_binder:
     select_first_character: "bracketleft"    # 以词定字：取首字
     select_last_character: "bracketright"    # 以词定字：取尾字
     bindings:
-      # 以下为原有绑定（完整保留）
-      - { when: composing, accept: Shift+Tab, send: Shift+Left }
-      - { when: composing, accept: Tab, send: Shift+Right }
-      - { when: composing, accept: Alt+Left, send: Shift+Left }
-      - { when: composing, accept: Alt+Right, send: Shift+Right }
-      - { when: has_menu, accept: minus, send: Page_Up }
-      - { when: has_menu, accept: equal, send: Page_Down }
-      - { when: always, toggle: ascii_punct, accept: Control+Shift+3 }
-      - { when: always, toggle: ascii_punct, accept: Control+Shift+numbersign }
-      - { when: always, toggle: traditionalization, accept: Control+Shift+4 }
-      - { when: always, toggle: traditionalization, accept: Control+Shift+dollar }
-      - {accept: KP_0, send: 0, when: composing}
-      - {accept: KP_1, send: 1, when: composing}
-      - {accept: KP_2, send: 2, when: composing}
-      - {accept: KP_3, send: 3, when: composing}
-      - {accept: KP_4, send: 4, when: composing}
-      - {accept: KP_5, send: 5, when: composing}
-      - {accept: KP_6, send: 6, when: composing}
-      - {accept: KP_7, send: 7, when: composing}
-      - {accept: KP_8, send: 8, when: composing}
-      - {accept: KP_9, send: 9, when: composing}
-      - {accept: KP_Decimal, send: period, when: composing}
-      - {accept: KP_Multiply, send: asterisk, when: composing}
-      - {accept: KP_Add,      send: plus,     when: composing}
-      - {accept: KP_Subtract, send: minus,    when: composing}
-      - {accept: KP_Divide,   send: slash,    when: composing}
-      - {accept: KP_Enter,    send: Return,   when: composing}
-      # 以下为自定义：逗号句号翻页（仅在候选菜单出现时生效，平时输入仍出 ，。）
-      - { when: has_menu, accept: comma, send: Page_Up }
-      - { when: has_menu, accept: period, send: Page_Down }
+    - { when: "composing", accept: "Shift+Tab", send: "Shift+Left" }
+    - { when: "composing", accept: "Tab", send: "Shift+Right" }
+    - { when: "composing", accept: "Alt+Left", send: "Shift+Left" }
+    - { when: "composing", accept: "Alt+Right", send: "Shift+Right" }
+    - { when: "has_menu", accept: "minus", send: "Page_Up" }
+    - { when: "has_menu", accept: "equal", send: "Page_Down" }
+    - { when: "always", accept: "Control+Shift+3", toggle: "ascii_punct" }
+    - { when: "always", accept: "Control+Shift+numbersign", toggle: "ascii_punct" }
+    - { when: "always", accept: "Control+Shift+4", toggle: "traditionalization" }
+    - { when: "always", accept: "Control+Shift+dollar", toggle: "traditionalization" }
+    - { when: "composing", accept: "KP_0", send: "0" }
+    - { when: "composing", accept: "KP_1", send: "1" }
+    - { when: "composing", accept: "KP_2", send: "2" }
+    - { when: "composing", accept: "KP_3", send: "3" }
+    - { when: "composing", accept: "KP_4", send: "4" }
+    - { when: "composing", accept: "KP_5", send: "5" }
+    - { when: "composing", accept: "KP_6", send: "6" }
+    - { when: "composing", accept: "KP_7", send: "7" }
+    - { when: "composing", accept: "KP_8", send: "8" }
+    - { when: "composing", accept: "KP_9", send: "9" }
+    - { when: "composing", accept: "KP_Decimal", send: "period" }
+    - { when: "composing", accept: "KP_Multiply", send: "asterisk" }
+    - { when: "composing", accept: "KP_Add", send: "plus" }
+    - { when: "composing", accept: "KP_Subtract", send: "minus" }
+    - { when: "composing", accept: "KP_Divide", send: "slash" }
+    - { when: "composing", accept: "KP_Enter", send: "Return" }
+    - { when: "has_menu", accept: "comma", send: "Page_Up" }
+    - { when: "has_menu", accept: "period", send: "Page_Down" }
 
-  # 注：editor 绑定属于方案级配置，改这里会被 rime_ice.schema.yaml 整体覆盖，
-  #    需在 rime_ice.custom.yaml 里 patch（见该文件）
+  # 注：editor 绑定属方案级配置（Ctrl+E 等），改 rime_ice.custom.yaml。
 
   # ── 与上游的已知分歧（2026-10-17 逐项核对，均决定保留本地行为）──────
-  # 1. switcher/save_options 含 dict_comment（上游 da1fbe6 已将其移除）：
+  # 1. switcher/save_options 含 dict_comment（上游 da1fbe6 已移除）：
   #    差异仅在「词典释义开关是否跨会话记忆」——本地=记忆；上游=不记忆，
   #    回落到 rime_ice.schema.yaml 的 reset: 1（默认开）。本地用
   #    Ctrl+Shift+E 频繁切换该开关，保留记忆更顺手，暂不向上游对齐。
-  #    （dict_comment 开关本身在方案中定义良好：states [译关, 译开]。）
   # 2. key_binder /（rime_ice.custom.yaml 的）processors 为整体替换列表，
   #    上游新增的绑定/处理器不会自动继承。每次 git pull 更新后执行：
   #      ruby others/script/check_custom_patch.rb

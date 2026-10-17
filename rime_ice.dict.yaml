@@ -7,18 +7,16 @@ version: "2026-10-17"
 # 本地定制说明：2026-10-17 挂载自建诗词库（poetry.*，见下方 import_tables），
 # 升级主词库时请同步更新此版本号
 import_tables:
-  - cn_dicts/8105     # 字表
-  # - cn_dicts/41448  # 大字表（按需启用）（启用时和 8105 同时启用并放在 8105 下面）
-  - cn_dicts/base     # 基础词库
-  - cn_dicts/ext      # 扩展词库
+  - cn_dicts/8105  # 字表
+  - cn_dicts/base  # 基础词库
+  - cn_dicts/ext  # 扩展词库
   - cn_dicts/tencent  # 腾讯词向量（大词库，部署时间较长）
-  - cn_dicts/others   # 一些杂项
+  - cn_dicts/others  # 一些杂项
+  - cn_dicts/poetry.classics  # 诗经/论语/楚辞/五代词/蒙学（权重 8）
+  - cn_dicts/poetry.tang  # 全唐诗 + 补录（权重 5）
+  - cn_dicts/poetry.songci  # 全宋词（权重 5）
 
   # 建议把扩展词库放到下面，有重复词条时，最上面的权重生效
-  # 古诗词词库（本地生成，源自 chinese-poetry；重新生成用 others/script/gen_poetry_dict.py <语料目录>；已纳入 git 跟踪）
-  - cn_dicts/poetry.classics  # 诗经/论语/楚辞/五代词/蒙学/唐诗三百首（权重 8）
-  - cn_dicts/poetry.tang      # 全唐诗 + 补录（权重 5）
-  - cn_dicts/poetry.songci    # 全宋词（权重 5）
   # - mydict1           # 挂载配置目录下的 mydict1.dict.yaml 词库文件
   # - cn_dicts/mydict2  # 挂载 cn_dicts 目录里的 mydict2.dict.yaml 词库文件
 ...

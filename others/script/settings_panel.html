@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rime 设置中心</title>
+<style>
+:root{
+  --bg:#ffffff; --bg-side:#f5f5f7; --card:#ffffff; --border:#d8d8de; --border-soft:#e8e8ed;
+  --text:#1d1d1f; --text-2:#6e6e73; --text-3:#98989d;
+  --accent:#0a84ff; --accent-soft:rgba(10,132,255,.12);
+  --danger:#ff3b30; --ok:#30d158;
+  --kbd:#f5f5f7; --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.06);
+  --radius:12px;
+}
+[data-theme="dark"]{
+  --bg:#1e1e20; --bg-side:#262628; --card:#2a2a2c; --border:#3a3a3c; --border-soft:#333335;
+  --text:#f5f5f7; --text-2:#a1a1a6; --text-3:#8e8e93;
+  --accent:#0a84ff; --accent-soft:rgba(10,132,255,.22);
+  --kbd:#3a3a3c; --shadow:0 1px 2px rgba(0,0,0,.2),0 4px 16px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;
+  background:var(--bg); color:var(--text); font-size:13px; line-height:1.5;
+  display:grid; grid-template-columns:232px 1fr; overflow:hidden;
+}
+/* ── 侧栏 ─────────────────────────────── */
+aside{
+  background:var(--bg-side); border-right:1px solid var(--border-soft);
+  padding:18px 10px 12px; display:flex; flex-direction:column; gap:2px; overflow-y:auto;
+}
+.brand{padding:2px 10px 14px}
+.brand h1{font-size:15px;font-weight:700;letter-spacing:.2px}
+.brand p{font-size:11px;color:var(--text-3);margin-top:2px;word-break:break-all}
+nav button{
+  display:flex; align-items:center; gap:9px; width:100%; padding:7px 10px;
+  border:0; border-radius:8px; background:transparent; color:var(--text);
+  font-size:13px; cursor:pointer; text-align:left; font-family:inherit;
+}
+nav button svg{width:17px;height:17px;flex:none;stroke:var(--accent)}
+nav button:hover{background:rgba(128,128,128,.12)}
+nav button.active{background:var(--accent); color:#fff}
+nav button.active svg{stroke:#fff}
+.side-foot{margin-top:auto;padding:10px 10px 4px;border-top:1px solid var(--border-soft);display:flex;align-items:center;gap:8px}
+.side-foot span{font-size:11px;color:var(--text-3);flex:1}
+.themebtn{border:1px solid var(--border);background:var(--card);color:var(--text-2);
+  border-radius:7px;font-size:11px;padding:3px 8px;cursor:pointer;font-family:inherit}
+.themebtn:hover{color:var(--text)}
+/* ── 主区 ─────────────────────────────── */
+main{overflow-y:auto;padding:22px 30px 60px}
+header{
+  display:flex;align-items:center;gap:10px;margin-bottom:20px;position:sticky;top:0;
+  background:linear-gradient(var(--bg) 82%,transparent);padding-bottom:10px;z-index:5;
+}
+header h2{font-size:20px;font-weight:700;flex:1}
+.btn{
+  border:1px solid var(--border);background:var(--card);color:var(--text);
+  border-radius:8px;font-size:12.5px;padding:6px 13px;cursor:pointer;font-family:inherit;
+  box-shadow:0 1px 1px rgba(0,0,0,.03);white-space:nowrap;
+}
+.btn:hover{border-color:var(--text-3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--danger)}
+.btn:disabled{opacity:.5;cursor:default}
+section{display:none;max-width:760px}
+section.show{display:block}
+.sec-desc{color:var(--text-2);font-size:12.5px;margin:-8px 0 16px}
+.card{
+  background:var(--card);border:1px solid var(--border-soft);border-radius:var(--radius);
+  box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden;
+}
+.card .card-title{
+  font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;
+  letter-spacing:.6px;padding:12px 16px 0;
+}
+.row{
+  display:flex;align-items:center;gap:14px;padding:11px 16px;
+  border-top:1px solid var(--border-soft);
+}
+.card .card-title + .row{border-top:0}
+.row .grow{flex:1;min-width:0}
+.row .label{font-size:13px;font-weight:500}
+.row .desc{font-size:11.5px;color:var(--text-2);margin-top:1px}
+.row .ctl{flex:none;display:flex;align-items:center;gap:8px}
+kbd{
+  font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11px;
+  background:var(--kbd);border:1px solid var(--border);border-bottom-width:2px;
+  border-radius:5px;padding:1px 6px;color:var(--text);
+}
+/* 开关 */
+.sw{position:relative;width:40px;height:24px;flex:none}
+.sw input{opacity:0;width:0;height:0}
+.sw i{
+  position:absolute;inset:0;background:#d8d8de;border-radius:12px;transition:.2s;cursor:pointer;
+}
+.sw i:after{
+  content:"";position:absolute;left:2px;top:2px;width:20px;height:20px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:.2s;
+}
+.sw input:checked + i{background:var(--ok)}
+.sw input:checked + i:after{transform:translateX(16px)}
+.sw input:disabled + i{opacity:.45;cursor:default}
+/* 步进器 */
+.step{display:flex;align-items:center;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.step button{
+  width:26px;height:26px;border:0;background:var(--card);color:var(--text);font-size:15px;
+  cursor:pointer;line-height:1;
+}
+.step button:hover{background:var(--accent-soft)}
+.step .val{min-width:38px;text-align:center;font-size:13px;font-variant-numeric:tabular-nums;
+  border-left:1px solid var(--border);border-right:1px solid var(--border);line-height:24px}
+/* 分段控制 */
+.seg{display:flex;background:var(--kbd);border-radius:8px;padding:2px;gap:2px}
+.seg button{
+  border:0;background:transparent;color:var(--text-2);font-size:12px;padding:4px 12px;
+  border-radius:6px;cursor:pointer;font-family:inherit;white-space:nowrap;
+}
+.seg button.on{background:var(--card);color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+/* 下拉 / 文本 */
+select,input[type=text]{
+  background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;
+  font-size:12.5px;padding:5px 9px;font-family:inherit;min-width:150px;
+}
+select:focus,input[type=text]:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+/* 单选卡 */
+.radios{display:grid;gap:8px;padding:12px 16px}
+.radio{
+  display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border-soft);
+  border-radius:10px;padding:10px 12px;cursor:pointer;transition:.15s;
+}
+.radio:hover{border-color:var(--text-3)}
+.radio.on{border-color:var(--accent);background:var(--accent-soft)}
+.radio .dot{
+  width:16px;height:16px;border-radius:50%;border:1.5px solid var(--text-3);flex:none;margin-top:2px;
+  display:flex;align-items:center;justify-content:center;
+}
+.radio.on .dot{border-color:var(--accent)}
+.radio.on .dot:after{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.radio .t{font-size:13px;font-weight:600}
+.radio .d{font-size:11.5px;color:var(--text-2);margin-top:1px}
+/* 方案 / 词库列表 */
+.checklist{display:grid;gap:6px;padding:12px 16px}
+.check{
+  display:flex;align-items:center;gap:10px;border:1px solid var(--border-soft);
+  border-radius:9px;padding:8px 12px;cursor:pointer;
+}
+.check:hover{border-color:var(--text-3)}
+.check.on{border-color:var(--accent);background:var(--accent-soft)}
+.check .box{
+  width:17px;height:17px;border-radius:5px;border:1.5px solid var(--text-3);flex:none;
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;
+}
+.check.on .box{background:var(--accent);border-color:var(--accent)}
+.check .nm{font-size:13px;font-weight:500}
+.check .id{font-size:11px;color:var(--text-3);font-family:ui-monospace,Menlo,monospace;margin-left:auto}
+.check .must{font-size:10.5px;color:var(--danger);border:1px solid var(--danger);border-radius:5px;padding:0 5px;margin-left:auto}
+/* 提示条 */
+.note{
+  display:flex;gap:9px;background:var(--accent-soft);border:1px solid var(--accent);
+  border-radius:10px;padding:10px 13px;font-size:12px;color:var(--text);margin-bottom:14px;
+}
+.note.warn{background:rgba(255,159,10,.12);border-color:#ff9f0a}
+.note svg{width:15px;height:15px;flex:none;stroke:var(--accent);margin-top:1px}
+.note.warn svg{stroke:#ff9f0a}
+.note b{font-weight:700}
+/* 部署日志 */
+pre.log{
+  background:#1c1c1e;color:#e5e5ea;border-radius:10px;padding:12px 14px;font-size:11.5px;
+  font-family:ui-monospace,"SF Mono",Menlo,monospace;white-space:pre-wrap;word-break:break-all;
+  max-height:220px;overflow:auto;margin-top:10px;
+}
+/* Toast */
+#toast{
+  position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(20px);
+  background:#1c1c1e;color:#fff;font-size:12.5px;padding:9px 18px;border-radius:10px;
+  box-shadow:0 6px 24px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:.25s;z-index:50;
+  max-width:70%;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.err{background:#b3261e}
+/* 弹窗 */
+#mask{
+  position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;
+  justify-content:center;z-index:40;backdrop-filter:blur(2px);
+}
+#mask.show{display:flex}
+.dialog{
+  background:var(--bg);border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,.3);
+  width:min(760px,92vw);max-height:84vh;display:flex;flex-direction:column;overflow:hidden;
+}
+.dialog .dh{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border-soft)}
+.dialog .dh h3{font-size:15px;flex:1}
+.dialog .db{padding:16px 18px;overflow:auto}
+.dialog .df{padding:12px 18px;border-top:1px solid var(--border-soft);display:flex;gap:8px;justify-content:flex-end}
+.tabs{display:flex;gap:4px;margin-bottom:12px}
+.tabs button{
+  border:1px solid var(--border);background:var(--card);color:var(--text-2);border-radius:7px;
+  font-size:11.5px;padding:3px 10px;cursor:pointer;font-family:inherit;
+}
+.tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.yaml{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11.5px;white-space:pre;
+  background:var(--bg-side);border:1px solid var(--border-soft);border-radius:8px;padding:12px;
+  overflow:auto;max-height:46vh;color:var(--text)}
+.spin{
+  width:13px;height:13px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;
+  border-radius:50%;display:inline-block;animation:r .7s linear infinite;vertical-align:-2px;
+}
+@keyframes r{to{transform:rotate(360deg)}}
+.muted{color:var(--text-2);font-size:12px}
+</style>
+</head>
+<body>
+<aside>
+  <div class="brand">
+    <h1>Rime 设置中心</h1>
+    <p id="rime-path">~/Library/Rime</p>
+  </div>
+  <nav id="nav"></nav>
+  <div class="side-foot">
+    <span id="foot-info">就绪</span>
+    <button class="themebtn" id="theme-btn">跟随系统</button>
+  </div>
+</aside>
+
+<main>
+  <header>
+    <h2 id="sec-title">输入行为</h2>
+    <button class="btn" id="btn-check">检查一致性</button>
+    <button class="btn" id="btn-save">保存</button>
+    <button class="btn primary" id="btn-save-deploy">保存并重新部署</button>
+  </header>
+
+  <div class="note" id="top-note" style="display:none">
+    <svg viewBox="0 0 16 16" fill="none" stroke-width="1.6"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v4M8 11h.01"/></svg>
+    <div id="top-note-text"></div>
+  </div>
+
+  <!-- ① 输入行为 -->
+  <section id="sec-behavior" class="show">
+    <p class="sec-desc">基础输入行为对应 default.custom.yaml；改动保存并重新部署后生效。</p>
+    <div class="card">
+      <div class="card-title">候选</div>
+      <div class="row">
+        <div class="grow"><div class="label">每页候选数量</div>
+          <div class="desc">候选菜单每页显示的词条数（1–9）</div></div>
+        <div class="ctl"><div class="step" data-step="page_size" data-min="1" data-max="9">
+          <button data-d="-1">−</button><div class="val">9</div><button data-d="1">+</button>
+        </div></div>
+      </div>
+      <div class="row">
+        <div class="grow"><div class="label">Caps Lock 切换中英文</div>
+          <div class="desc">开启后 Caps Lock 切换中/英；关闭则切换大写锁定</div></div>
+        <div class="ctl"><label class="sw"><input type="checkbox" id="caps"><i></i></label></div>
+      </div>
+      <div class="row">
+        <div class="grow"><div class="label">方案选单快捷键</div>
+          <div class="desc">呼出方案选单的快捷键</div></div>
+        <div class="ctl"><kbd>Ctrl</kbd><kbd>`</kbd><span class="muted">/</span><kbd>F4</kbd>
+          <label class="sw"><input type="checkbox" id="switcher-hotkeys"><i></i></label></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">修饰键切换中英文</div>
+      <div class="row">
+        <div class="grow"><div class="label">左 Shift</div>
+          <div class="desc">拼音打到一半按左 Shift 时的行为</div></div>
+        <div class="ctl"><select id="shift-l"></select></div>
+      </div>
+      <div class="row">
+        <div class="grow"><div class="label">右 Shift</div>
+          <div class="desc">拼音打到一半按右 Shift 时的行为</div></div>
+        <div class="ctl"><select id="shift-r"></select></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ② 输入方案 -->
+  <section id="sec-schemas">
+    <p class="sec-desc">选择参与候选的方案。Rime 的方案列表是整体替换，停用仅从列表移除，方案文件保留。</p>
+    <div class="card">
+      <div class="card-title">启用方案</div>
+      <div class="checklist" id="schema-list"></div>
+    </div>
+    <div class="note">
+      <svg viewBox="0 0 16 16" fill="none" stroke-width="1.6"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v4M8 11h.01"/></svg>
+      <div>九宫格方案 <b>t9</b> 已从其方案文件删除（上游提交 del t9），不再列出；如需恢复须先从上游取回 <b>t9.schema.yaml</b>。上游今后增删方案时，先运行顶部「检查一致性」对照。</div>
+    </div>
+  </section>
+
+  <!-- ③ 按键绑定 -->
+  <section id="sec-keys">
+    <p class="sec-desc">整组开关按键。key_binder 在 Rime 中是「整体替换」列表，面板会完整重列全部生效绑定——上游新增绑定需靠「检查一致性」发现。</p>
+    <div class="card">
+      <div class="card-title">按键组</div>
+      <div id="key-groups"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">以词定字</div>
+      <div class="row">
+        <div class="grow"><div class="label">中括号以词定字</div>
+          <div class="desc">候选上屏时按 <kbd>[</kbd> 取首字、<kbd>]</kbd> 取尾字</div></div>
+        <div class="ctl"><label class="sw"><input type="checkbox" id="select-char"><i></i></label></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ④ 候选外观 -->
+  <section id="sec-style">
+    <p class="sec-desc">对应 squirrel.custom.yaml 的 style 段；保存后重新部署生效。</p>
+    <div class="card">
+      <div class="card-title">布局</div>
+      <div class="row">
+        <div class="grow"><div class="label">候选排列</div></div>
+        <div class="ctl"><div class="seg" id="seg-layout">
+          <button data-v="stacked">竖排</button><button data-v="linear">横排</button>
+        </div></div>
+      </div>
+      <div class="row">
+        <div class="grow"><div class="label">拼音串内嵌</div>
+          <div class="desc">已敲拼音显示在输入光标处，而非候选窗口内</div></div>
+        <div class="ctl"><label class="sw"><input type="checkbox" id="inline-preedit"><i></i></label></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">字体与圆角</div>
+      <div class="row">
+        <div class="grow"><div class="label">候选字体</div>
+          <div class="desc">当前为方正准圆（FZZhunYuan-M02，已装入 ~/Library/Fonts）</div></div>
+        <div class="ctl"><input type="text" id="font-face" spellcheck="false"></div>
+      </div>
+      <div class="row">
+        <div class="grow"><div class="label">候选字号</div></div>
+        <div class="ctl"><div class="step" data-step="font_point" data-min="12" data-max="36">
+          <button data-d="-1">−</button><div class="val">24</div><button data-d="1">+</button>
+        </div></div>
+      </div>
+      <div class="row">
+        <div class="grow"><div class="label">编号使用同一字体</div>
+          <div class="desc">候选序号 1–9 的字体、字号</div></div>
+        <div class="ctl">
+          <div class="step" data-step="label_font_point" data-min="12" data-max="30">
+            <button data-d="-1">−</button><div class="val">20</div><button data-d="1">+</button>
+          </div>
+          <label class="sw"><input type="checkbox" id="label-font"><i></i></label>
+        </div>
+      </div>
+      <div class="row">
+        <div class="grow"><div class="label">候选窗圆角</div></div>
+        <div class="ctl"><div class="step" data-step="corner_radius" data-min="0" data-max="12">
+          <button data-d="-1">−</button><div class="val">6</div><button data-d="1">+</button>
+        </div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">主题</div>
+      <div class="row">
+        <div class="grow"><div class="label">配色方案</div>
+          <div class="desc">「跟随系统」在浅色/深色模式间自动切换</div></div>
+        <div class="ctl">
+          <div class="seg" id="seg-scheme">
+            <button data-v="system">跟随系统</button><button data-v="custom">自定义</button>
+          </div>
+          <input type="text" id="color-scheme" spellcheck="false" style="display:none" placeholder="purity_of_form_custom">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ⑤ 释义上屏 -->
+  <section id="sec-ctrl-e">
+    <p class="sec-desc">对应 rime_ice.custom.yaml：Ctrl+E 在候选高亮时的行为，以及中英词典释义管线相关处理器。</p>
+    <div class="card">
+      <div class="card-title">Ctrl+E 行为</div>
+      <div class="radios" id="ctrl-e-radios">
+        <div class="radio" data-v="commit_comment">
+          <div class="dot"></div><div><div class="t">只上屏释义</div>
+          <div class="d">仅输出候选的中/英文注释，不输出中文词本身（当前配置）</div></div>
+        </div>
+        <div class="radio" data-v="commit_text">
+          <div class="dot"></div><div><div class="t">候选 + 释义一起上屏</div>
+          <div class="d">Rime 默认行为：中文词加英文注释一并输出</div></div>
+        </div>
+        <div class="radio" data-v="off">
+          <div class="dot"></div><div><div class="t">关闭</div>
+          <div class="d">Ctrl+E 恢复为 Rime 默认（光标相关）</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">英文候选顺位上屏</div>
+      <div class="row">
+        <div class="grow"><div class="label">Ctrl+E / Ctrl+R 按顺位上屏英文词</div>
+          <div class="d">高亮英文候选时：Ctrl+E 上屏第 1 个英文词，Ctrl+R 上屏第 2 个（需上方 Ctrl+E 已开启）</div></div>
+        <div class="ctl"><label class="sw"><input type="checkbox" id="rank-commit"><i></i></label></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">词典释义总开关（方案内置）</div>
+      <div class="row">
+        <div class="grow"><div class="label">译开 / 译关</div>
+          <div class="d">输入时按 <kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd> 切换；默认开且跨会话记忆 <span id="sw-states"></span></div></div>
+        <div class="ctl"><span class="muted">方案级开关，面板不改动</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ⑥ 词库挂载 -->
+  <section id="sec-dicts">
+    <p class="sec-desc">对应 rime_ice.dict.yaml 的 import_tables；保存时自动提升版本号，重新部署后生效。</p>
+    <div class="note warn">
+      <svg viewBox="0 0 16 16" fill="none" stroke-width="1.6"><path d="M8 1.5L14.5 13.5H1.5L8 1.5z"/><path d="M8 6v3.5M8 11.5h.01"/></svg>
+      <div>此处修改的是上游文件 <b>rime_ice.dict.yaml</b>（面板只重写 import_tables 段，其余原样保留），保存前会自动整体备份。</div>
+    </div>
+    <div class="card">
+      <div class="card-title">挂载词库</div>
+      <div class="checklist" id="dict-list"></div>
+    </div>
+  </section>
+
+  <!-- ⑦ 部署与维护 -->
+  <section id="sec-ops">
+    <p class="sec-desc">设置改完后需要重新部署才能生效；全量部署（含腾讯词向量）约需 1–3 分钟。</p>
+    <div class="card">
+      <div class="card-title">操作</div>
+      <div class="row">
+        <div class="grow"><div class="label">重新部署</div>
+          <div class="d">等同于菜单栏 鼠须管 → 重新部署（Squirrel --reload）</div></div>
+        <div class="ctl"><button class="btn" id="btn-deploy2">立即部署</button></div>
+      </div>
+      <div class="row">
+        <div class="grow"><div class="label">检查补丁一致性</div>
+          <div class="d">对照上游检查 schema_list / key_binder / processors 的漂移</div></div>
+        <div class="ctl"><button class="btn" id="btn-check2">运行检查</button></div>
+      </div>
+      <div class="row">
+        <div class="grow"><div class="label">查看生成的 YAML</div>
+          <div class="d">预览四个受管文件的完整内容</div></div>
+        <div class="ctl"><button class="btn" id="btn-yaml">查看</button></div>
+      </div>
+      <div class="row">
+        <div class="grow"><div class="label">恢复备份</div>
+          <div class="d">每次保存前都会自动备份到 others/script/.settings_backup/</div></div>
+        <div class="ctl">
+          <select id="backup-sel"><option value="">选择备份…</option></select>
+          <button class="btn danger" id="btn-restore">恢复</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">部署日志</div>
+      <div class="row" style="padding-top:8px"><pre class="log" id="deploy-log" style="width:100%;margin-top:0">（尚无操作）</pre></div>
+    </div>
+  </section>
+</main>
+
+<div id="toast"></div>
+<div id="mask"><div class="dialog">
+  <div class="dh"><h3 id="dlg-title">标题</h3><button class="btn" id="dlg-close">关闭</button></div>
+  <div class="db" id="dlg-body"></div>
+  <div class="df" id="dlg-foot"></div>
+</div></div>
+
+<script>
+"use strict";
+/* ── 状态 ─────────────────────────────────────────────── */
+const S = { model:null, meta:null, raw:null, dirty:false };
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+/* ── 图标 ─────────────────────────────────────────────── */
+const ICON = {
+  behavior:'<svg viewBox="0 0 20 20" fill="none" stroke-width="1.5"><rect x="2" y="5" width="16" height="11" rx="2"/><path d="M5 8h1M8 8h1M11 8h1M14 8h1M5 11h6M13 11h2"/></svg>',
+  schemas:'<svg viewBox="0 0 20 20" fill="none" stroke-width="1.5"><path d="M3 5h14M3 10h14M3 15h9"/><circle cx="16.5" cy="15" r="1.4"/></svg>',
+  keys:'<svg viewBox="0 0 20 20" fill="none" stroke-width="1.5"><rect x="2.5" y="4" width="15" height="12" rx="2.5"/><path d="M6 7.5v2M10 7.5v2M14 7.5v2M6.5 12.5h7"/></svg>',
+  style:'<svg viewBox="0 0 20 20" fill="none" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><path d="M10 3a7 7 0 010 14"/><circle cx="10" cy="10" r="2.2"/></svg>',
+  ctrlE:'<svg viewBox="0 0 20 20" fill="none" stroke-width="1.5"><path d="M4 5h12v8H8l-4 3V5z"/><path d="M7 8.5h6M7 11h3.5"/></svg>',
+  dicts:'<svg viewBox="0 0 20 20" fill="none" stroke-width="1.5"><path d="M3.5 4.5h5a2 2 0 012 2v9a1.6 1.6 0 00-1.6-1.6H3.5V4.5z"/><path d="M16.5 4.5h-5a2 2 0 00-2 2v9a1.6 1.6 0 011.6-1.6h5.4V4.5z"/></svg>',
+  ops:'<svg viewBox="0 0 20 20" fill="none" stroke-width="1.5"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4"/></svg>',
+};
+const SECTIONS = [
+  ["behavior","输入行为",ICON.behavior],
+  ["schemas","输入方案",ICON.schemas],
+  ["keys","按键绑定",ICON.keys],
+  ["style","候选外观",ICON.style],
+  ["ctrlE","释义上屏",ICON.ctrlE],
+  ["dicts","词库挂载",ICON.dicts],
+  ["ops","部署与维护",ICON.ops],
+];
+
+/* ── toast ────────────────────────────────────────────── */
+let toastTimer;
+function toast(msg, err){
+  const t = $("#toast");
+  t.textContent = msg;
+  t.className = "show" + (err ? " err" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.className="", err?5200:2600);
+}
+function log(msg){
+  const el = $("#deploy-log");
+  const ts = new Date().toLocaleTimeString("zh-CN",{hour12:false});
+  el.textContent = (el.textContent === "（尚无操作）" ? "" : el.textContent + "\n") +
+    `[${ts}] ${msg}`;
+  el.scrollTop = el.scrollHeight;
+}
+
+/* ── 弹窗 ─────────────────────────────────────────────── */
+function dialog(title, htmlHTML, footHTML){
+  $("#dlg-title").textContent = title;
+  $("#dlg-body").innerHTML = htmlHTML;
+  $("#dlg-foot").innerHTML = footHTML || "";
+  $("#mask").classList.add("show");
+}
+$("#dlg-close").onclick = ()=>$("#mask").classList.remove("show");
+$("#mask").addEventListener("click", e=>{ if(e.target.id==="mask") $("#mask").classList.remove("show"); });
+
+/* ── 主题（面板自身，与输入法主题无关） ────────────────── */
+const themeBtn = $("#theme-btn");
+let panelTheme = localStorage.getItem("panel-theme") || "auto";
+function applyTheme(){
+  const dark = panelTheme==="dark" ||
+    (panelTheme==="auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  themeBtn.textContent = {auto:"跟随系统",light:"浅色",dark:"深色"}[panelTheme];
+}
+themeBtn.onclick = ()=>{
+  panelTheme = panelTheme==="auto" ? "light" : panelTheme==="light" ? "dark" : "auto";
+  localStorage.setItem("panel-theme", panelTheme);
+  applyTheme();
+};
+applyTheme();
+
+/* ── 导航 ─────────────────────────────────────────────── */
+function renderNav(){
+  $("#nav").innerHTML = SECTIONS.map(([id,name,ic])=>
+    `<button data-s="${id}">${ic}${name}</button>`).join("");
+  $$("#nav button").forEach(b=>b.onclick = ()=>{
+    $$("#nav button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    $$("main section").forEach(s=>s.classList.remove("show"));
+    $("#sec-"+b.dataset.s).classList.add("show");
+    $("#sec-title").textContent = b.textContent;
+  });
+  $("#nav button").click();
+}
+
+/* ── 控件构造 ─────────────────────────────────────────── */
+const SHIFT_OPTS = [
+  ["commit_code","上屏拼音编码 → 英文"],["commit_text","上屏候选文字 → 英文"],
+  ["inline_ascii","临时英文 · 回车回中文"],["clear","清除未上屏 → 英文"],
+  ["noop","不切换"],["set_ascii_mode","切换到英文模式"],["unset_ascii_mode","切换到中文模式"],
+];
+function fillSelect(sel, opts, val){
+  sel.innerHTML = opts.map(([v,d])=>`<option value="${v}"${v===val?" selected":""}>${d}</option>`).join("");
+}
+function stepper(root, val){
+  root.querySelector(".val").textContent = val;
+  root.querySelectorAll("button").forEach(b=>b.onclick = ()=>{
+    const min = +root.dataset.min, max = +root.dataset.max;
+    let v = +root.querySelector(".val").textContent + (+b.dataset.d);
+    v = Math.max(min, Math.min(max, v));
+    root.querySelector(".val").textContent = v;
+    markDirty();
+  });
+  return ()=>+root.querySelector(".val").textContent;
+}
+function segmented(root, val){
+  root.querySelectorAll("button").forEach(b=>{
+    b.classList.toggle("on", b.dataset.v===val);
+    b.onclick = ()=>{
+      root.querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on");
+      root.dispatchEvent(new CustomEvent("seg-change",{detail:b.dataset.v}));
+      markDirty();
+    };
+  });
+}
+function markDirty(){
+  S.dirty = true;
+  $("#btn-save").textContent = "保存 *";
+  $("#foot-info").textContent = "有未保存的更改";
+}
+
+/* ── 渲染各 section ───────────────────────────────────── */
+function renderBehavior(m){
+  stepper($('[data-step="page_size"]'), m.page_size);
+  $("#caps").checked = !!m.ascii.caps;
+  $("#switcher-hotkeys").checked = !!m.switcher_hotkeys;
+  fillSelect($("#shift-l"), SHIFT_OPTS, m.ascii.shift_l);
+  fillSelect($("#shift-r"), SHIFT_OPTS, m.ascii.shift_r);
+}
+function renderSchemas(){
+  const on = new Set(S.model.schemas_on);
+  $("#schema-list").innerHTML = S.meta.schemas.map(s=>`
+    <div class="check ${on.has(s.id)?"on":""}" data-id="${s.id}">
+      <div class="box">${on.has(s.id)?"✓":""}</div>
+      <div class="nm">${s.name}</div>
+      ${s.id==="rime_ice"?'<div class="must">必需</div>':`<div class="id">${s.id}</div>`}
+    </div>`).join("");
+  $$("#schema-list .check").forEach(el=>el.onclick = ()=>{
+    const id = el.dataset.id;
+    if(id==="rime_ice"){ toast("全拼主方案不可停用",true); return; }
+    el.classList.toggle("on");
+    el.querySelector(".box").textContent = el.classList.contains("on")?"✓":"";
+    markDirty();
+  });
+}
+function renderKeys(){
+  $("#key-groups").innerHTML = S.meta.key_groups.map(g=>{
+    const on = !!S.model.keys[g.id];
+    return `<div class="row">
+      <div class="grow"><div class="label">${g.name}</div><div class="desc">${g.desc}</div></div>
+      <div class="ctl"><label class="sw"><input type="checkbox" data-kg="${g.id}" ${on?"checked":""}><i></i></label></div>
+    </div>`;
+  }).join("");
+  $$("[data-kg]").forEach(c=>c.onchange = markDirty);
+  $("#select-char").checked = !!S.model.select_char;
+  $("#select-char").onchange = markDirty;
+}
+function renderStyle(m){
+  const st = m.style;
+  segmented($("#seg-layout"), st.layout);
+  $("#seg-layout").addEventListener("seg-change", ()=>$("#seg-layout").dataset.v = $("#seg-layout").querySelector(".on").dataset.v);
+  stepper($('[data-step="font_point"]'), st.font_point);
+  stepper($('[data-step="label_font_point"]'), st.label_font_point);
+  stepper($('[data-step="corner_radius"]'), st.corner_radius);
+  $("#font-face").value = st.font_face;
+  $("#inline-preedit").checked = !!st.inline_preedit;
+  $("#label-font").checked = !!st.label_font;
+  $("#label-font").onchange = ()=>{
+    $('[data-step="label_font_point"]').style.opacity = $("#label-font").checked ? 1 : .4;
+    markDirty();
+  };
+  $('[data-step="label_font_point"]').style.opacity = st.label_font ? 1 : .4;
+  const schemeState = st.color_scheme === "system" ? "system" : "custom";
+  segmented($("#seg-scheme"), schemeState);
+  $("#color-scheme").value = schemeState==="system" ? "purity_of_form_custom" : st.color_scheme;
+  $("#color-scheme").style.display = schemeState==="custom" ? "" : "none";
+  $("#seg-scheme").addEventListener("seg-change", ()=>{
+    $("#color-scheme").style.display = $("#seg-scheme").querySelector(".on").dataset.v==="custom" ? "" : "none";
+  });
+  $$("#sec-style input,#sec-style select").forEach(el=>el.addEventListener("input", markDirty));
+}
+function renderCtrlE(m){
+  $$("#ctrl-e-radios .radio").forEach(r=>{
+    r.classList.toggle("on", r.dataset.v===m.ctrl_e);
+    r.onclick = ()=>{
+      $$("#ctrl-e-radios .radio").forEach(x=>x.classList.remove("on"));
+      r.classList.add("on");
+      markDirty();
+    };
+  });
+  $("#rank-commit").checked = !!m.rank_commit;
+  $("#rank-commit").onchange = markDirty;
+  const dc = (S.meta.switches||[]).find(s=>s.name==="dict_comment");
+  if(dc) $("#sw-states").textContent = `（状态：${dc.states.join(" / ")}，默认重置为「${dc.states[dc.reset||0]}」）`;
+}
+function renderDicts(){
+  const on = new Set(S.model.dicts_on);
+  $("#dict-list").innerHTML = S.meta.dicts.map(d=>{
+    const isOn = on.has(d.id);
+    return `<div class="check ${isOn?"on":""}" data-id="${d.id}">
+      <div class="box">${isOn?"✓":""}</div>
+      <div class="nm">${d.name}</div><div class="id">${d.id}</div>
+    </div>`;
+  }).join("");
+  $$("#dict-list .check").forEach(el=>el.onclick = ()=>{
+    el.classList.toggle("on");
+    el.querySelector(".box").textContent = el.classList.contains("on")?"✓":"";
+    markDirty();
+  });
+}
+
+/* ── 采集模型 ─────────────────────────────────────────── */
+function collect(){
+  const seg = (root)=>root.querySelector(".on").dataset.v;
+  return {
+    page_size: +$('[data-step="page_size"] .val').textContent,
+    schemas_on: $$("#schema-list .check.on").map(el=>el.dataset.id),
+    switcher_hotkeys: $("#switcher-hotkeys").checked,
+    ascii: { caps: $("#caps").checked,
+             shift_l: $("#shift-l").value, shift_r: $("#shift-r").value },
+    keys: { cursor:true,
+            paging_me: $('[data-kg="paging_me"]').checked,
+            paging_cp: $('[data-kg="paging_cp"]').checked,
+            punct: $('[data-kg="punct"]').checked,
+            keypad: $('[data-kg="keypad"]').checked },
+    select_char: $("#select-char").checked,
+    style: { layout: seg($("#seg-layout")),
+             font_face: $("#font-face").value.trim() || "FZZhunYuan-M02",
+             font_point: +$('[data-step="font_point"] .val').textContent,
+             label_font: $("#label-font").checked,
+             label_font_point: +$('[data-step="label_font_point"] .val').textContent,
+             corner_radius: +$('[data-step="corner_radius"] .val').textContent,
+             inline_preedit: $("#inline-preedit").checked,
+             color_scheme: seg($("#seg-scheme"))==="system" ? "system" : ($("#color-scheme").value.trim()||"purity_of_form_custom") },
+    ctrl_e: $("#ctrl-e-radios .radio.on").dataset.v,
+    rank_commit: $("#rank-commit").checked,
+    dicts_on: $$("#dict-list .check.on").map(el=>el.dataset.id),
+  };
+}
+
+/* ── API ───────────────────────────────────────────────── */
+async function api(path, body){
+  const r = await fetch(path, { method: body===undefined ? "GET" : "POST",
+    headers: {"Content-Type":"application/json"},
+    body: body===undefined ? undefined : JSON.stringify(body) });
+  return r.json();
+}
+async function reload(){
+  const st = await api("/api/state");
+  S.model = st.model; S.meta = st; S.raw = st.raw;
+  S.dirty = false;
+  $("#btn-save").textContent = "保存";
+  $("#foot-info").textContent = "已加载当前配置";
+  renderBehavior(st.model); renderSchemas(); renderKeys(); renderStyle(st.model);
+  renderCtrlE(st.model); renderDicts();
+  const ups = st.upstream_processors.length;
+  $("#sec-keys .note, #top-note").style.display = "none";
+}
+async function save(thenDeploy){
+  const m = collect();
+  $("#foot-info").textContent = "正在写入并自校验…";
+  const r = await api("/api/save", m);
+  if(!r.ok){
+    toast("保存失败：" + (r.errors||[r.error]).join("；"), true);
+    log("保存失败（已自动回滚）：" + (r.errors||[r.error]).join("；"));
+    $("#foot-info").textContent = "保存失败";
+    return false;
+  }
+  S.dirty = false;
+  $("#btn-save").textContent = "保存";
+  log(`已保存 ${r.files.length} 个文件（备份 ${r.backup}）`);
+  $("#foot-info").textContent = "已保存";
+  if(thenDeploy) return deploy();
+  toast("已保存。重新部署后生效");
+  reload();
+  return true;
+}
+async function deploy(){
+  log("开始重新部署（Squirrel --reload）…");
+  $("#foot-info").innerHTML = '部署中… <span class="spin"></span>';
+  const btn1 = $("#btn-save-deploy"), btn2 = $("#btn-deploy2");
+  btn1.disabled = btn2.disabled = true;
+  const r = await api("/api/deploy");
+  btn1.disabled = btn2.disabled = false;
+  if(r.ok){
+    log("部署完成（" + (r.seconds||"?") + "s）");
+    toast("部署完成，设置已生效");
+    $("#foot-info").textContent = "部署完成";
+  }else{
+    log("部署失败：" + (r.error||("rc="+r.rc)+"\n"+r.out));
+    toast("部署失败，详见日志", true);
+    $("#foot-info").textContent = "部署失败";
+  }
+  return !!r.ok;
+}
+async function runCheck(){
+  log("运行 check_custom_patch.rb …");
+  const r = await api("/api/check");
+  dialog("补丁一致性检查", `<div class="muted" style="margin-bottom:8px">check_custom_patch.rb 输出</div><pre class="log" style="margin:0">${esc(r.out||"")}</pre>`);
+  log(r.ok ? "检查通过" : "检查发现差异（见弹窗）");
+}
+function esc(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+
+/* ── 按钮 ─────────────────────────────────────────────── */
+$("#btn-save").onclick = ()=>save(false);
+$("#btn-save-deploy").onclick = ()=>save(true);
+$("#btn-deploy2").onclick = deploy;
+$("#btn-check").onclick = runCheck;
+$("#btn-check2").onclick = runCheck;
+$("#btn-yaml").onclick = async ()=>{
+  if(!S.raw) await reload();
+  const files = [["default","default.custom.yaml"],["squirrel","squirrel.custom.yaml"],
+                 ["schema","rime_ice.custom.yaml"],["dict","rime_ice.dict.yaml"]];
+  dialog("受管文件（当前状态）",
+    `<div class="tabs" id="yaml-tabs">${files.map(([k,n],i)=>`<button data-k="${k}" class="${i===0?"on":""}">${n}</button>`).join("")}</div>
+     <div class="yaml" id="yaml-body"></div>`,
+    `<button class="btn" id="yaml-copy">复制当前文件</button>`);
+  const show = k=>{ $("#yaml-body").textContent = S.raw[k]; };
+  $$("#yaml-tabs button").forEach(b=>b.onclick = ()=>{
+    $$("#yaml-tabs button").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on"); show(b.dataset.k);
+  });
+  show("default");
+  $("#yaml-copy").onclick = ()=>{
+    const k = $("#yaml-tabs .on").dataset.k;
+    navigator.clipboard.writeText(S.raw[k]).then(()=>toast("已复制到剪贴板"));
+  };
+};
+async function loadBackups(){
+  const r = await api("/api/backups");
+  $("#backup-sel").innerHTML = '<option value="">选择备份…</option>' +
+    (r.backups||[]).map(b=>`<option value="${b}">${b}</option>`).join("");
+}
+$("#btn-restore").onclick = async ()=>{
+  const name = $("#backup-sel").value;
+  if(!name){ toast("先选择一个备份", true); return; }
+  dialog("确认恢复", `<p>将用备份 <b>${esc(name)}</b> 覆盖当前四个受管文件。恢复前会先把当前状态另存备份。</p>`,
+    `<button class="btn" id="rs-cancel">取消</button><button class="btn danger" id="rs-ok">确认恢复</button>`);
+  $("#rs-cancel").onclick = ()=>$("#mask").classList.remove("show");
+  $("#rs-ok").onclick = async ()=>{
+    $("#mask").classList.remove("show");
+    const r = await api("/api/restore", {backup:name});
+    if(r.ok){ toast("已恢复 " + r.restored + " 个文件"); log(`已从 ${name} 恢复（恢复前备份 ${r.prerestore_backup}）`); }
+    else toast("恢复失败：" + (r.error||""), true);
+    await reload(); loadBackups();
+  };
+};
+
+/* ── 离开提醒 ─────────────────────────────────────────── */
+window.addEventListener("beforeunload", e=>{
+  if(S.dirty){ e.preventDefault(); e.returnValue = ""; }
+});
+
+/* ── 启动 ─────────────────────────────────────────────── */
+renderNav();
+reload().then(loadBackups).catch(e=>toast("加载失败："+e, true));
+$$("main section").forEach(sec=>{
+  sec.addEventListener("input", ()=>{}, true);
+});
+$("#caps").onchange = $("#switcher-hotkeys").onchange =
+  $("#inline-preedit").onchange = markDirty;
+$("#shift-l").onchange = $("#shift-r").onchange = markDirty;
+</script>
+</body>
+</html>

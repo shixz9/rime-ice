@@ -1,14 +1,11 @@
 # 雾凇拼音方案级补丁（rime_ice.custom.yaml）
-# 方案文件的 custom 补丁：对本方案的 engine/translator/editor 等做修改
-# 此文件被 git 忽略，git pull 更新词库不受影响
+# 由「Rime 设置面板」生成于 2026-10-17 13:10；手动修改会被下次面板保存覆盖
+# 方案文件的 custom 补丁：对本方案的 engine/editor 等做修改
 patch:
-  # 只上屏英文释义：候选高亮时按 Ctrl+E，仅输出该候选的英文注释（不含中文词本身）
-  # 对英文候选同样适用（此时上屏中文释义）；候选无释义时无动作
-  # （Ctrl+E 原绑定为「候选+释义一起上屏」，已在 dict_commit_processor.lua 中移除）
+  # Ctrl+E：只上屏释义，不输出中文词
   "editor/bindings/Control+e": commit_comment
 
-  # 处理器链：列表是整体替换，以下为 rime_ice.schema.yaml 原列表 + 插入的新处理器
-  # （fork 更新若改动了 processors 列表，需对照同步）
+  # 处理器链：列表是整体替换，以下为 rime_ice.schema.yaml 原列表 + 面板新增项
   engine/processors:
     - lua_processor@*select_character
     - lua_processor@*dict_commit_processor
