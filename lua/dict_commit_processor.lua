@@ -73,12 +73,11 @@ function M.func(key, env)
 
     if not key:release() and (context:is_composing() or context:has_menu()) then
         local repr = key:repr()
-        -- 匹配 Ctrl+d, Ctrl+e, 反斜杠 \, Ctrl+Shift+Return 以及自定义按键
+        -- 匹配 Ctrl+d、反斜杠 \、Ctrl+Shift+Return 以及自定义按键
+        -- 注：本地已移除 Control+e / Control+E，让位给「只上屏释义」(commit_comment)
         local is_match = (repr == env.commit_key)
             or (repr == "Control+d")
             or (repr == "Control+D")
-            or (repr == "Control+e")
-            or (repr == "Control+E")
             or (repr == "backslash")
             or (repr == "\\")
             or (repr == "Control+Shift+Return")

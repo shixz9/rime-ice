@@ -62,3 +62,20 @@ gone	gone
 Go程	gocheng
 code	code
 SOHO	soho
+
+# 2026-10-15 词库缺口检测补入的新词/热词
+栓Q	shuanq	100
+浓人	nong ren	100
+淡人	dan ren	100
+city不city	citybucity	100
+酱香拿铁	jiang xiang na tie	100
+AIGC	aigc	100
+邗江	han jiang	100
+跨端	kua duan	100
+吃谷	chi gu	100
+藕饼	ou bing	100
+提灯定损	ti deng ding sun	100
+王婆说媒	wang po shuo mei	100
+村BA	cunba	100
+尔滨	er bin	100
+悦鲜活	yue xian huo	100

@@ -48,6 +48,27 @@ local function is_chinese(s)
 end
 
 -- 按照释义项个数截断，安全处理 UTF-8 字符
+-- 本地修改：去除英文词性标注（int. n. v. adj. 等），只保留释义本身
+local POS_TAGS = {
+    "int", "n", "v", "vt", "vi", "adj", "adv", "prep", "conj", "pron",
+    "aux", "num", "art", "abbr", "phr", "sl", "fig", "lit", "derog",
+    "colloq", "formal", "informal", "TCM", "Budd", "obs", "hum", "rare"
+}
+local function strip_pos(s)
+    local changed = true
+    while changed do
+        changed = false
+        for _, tag in ipairs(POS_TAGS) do
+            local stripped = s:gsub("^" .. tag .. "%.%s*", "")
+            if stripped ~= s then
+                s = stripped
+                changed = true
+            end
+        end
+    end
+    return s
+end
+
 local function format_by_count(def_str, max_defs, max_length, is_en_to_zh)
     if not def_str or def_str == "" then return "" end
 
@@ -59,6 +80,7 @@ local function format_by_count(def_str, max_defs, max_length, is_en_to_zh)
     local items = {}
     for item in safe_str:gmatch("([^;]+)") do
         local trimmed = item:match("^%s*(.-)%s*$") or ""
+        trimmed = strip_pos(trimmed)
         if trimmed ~= "" then
             table.insert(items, trimmed)
         end

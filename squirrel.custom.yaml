@@ -1,0 +1,13 @@
+# 鼠须管界面设置（自定义补丁，优先级高于 squirrel.yaml）
+# 改完在菜单栏鼠须管图标 →「重新部署」生效
+patch:
+  style:
+    color_scheme: system                     # 主题跟随系统
+    candidate_list_layout: stacked           # 候选词竖排（linear 为横排）
+    text_orientation: horizontal
+    font_face: 'FZZhunYuan-M02'            # 候选字体：方正准圆_GBK（已装入 ~/Library/Fonts）
+    font_point: 24                           # 候选字号（⚠️ 键名是 font_point，不是 font_size）
+    label_font_face: 'FZZhunYuan-M02'      # 候选编号字体
+    label_font_point: 20                     # 候选编号字号
+    inline_preedit: true                     # 拼音串内嵌在输入光标处
+    corner_radius: 6                         # 候选窗圆角
