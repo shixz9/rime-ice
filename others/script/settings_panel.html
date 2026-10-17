@@ -787,6 +787,11 @@ async function runCheck(){
 }
 function esc(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
 
+/* ── 页面心跳：服务在页面全部关闭约 90 秒后自动退出（随用随开）── */
+function beat(){ fetch("/api/heartbeat").catch(()=>{}); }
+setInterval(beat, 20000);
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) beat(); });
+
 /* ── 按钮 ─────────────────────────────────────────────── */
 $("#btn-save").onclick = ()=>save(false);
 $("#btn-save-deploy").onclick = ()=>save(true);

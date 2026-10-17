@@ -25,6 +25,11 @@ BACKUP_DIR = SCRIPT_DIR / ".settings_backup"
 BUILD_DIR  = RIME_DIR / "build"                # 重建产物目录（轮询部署完成用）
 PANEL_HTML = SCRIPT_DIR / "settings_panel.html"
 SQUIRREL   = "/Library/Input Methods/Squirrel.app/Contents/MacOS/Squirrel"
+# 页面心跳：面板页面全部关闭超过该秒数后，服务自动退出（随用随开，不常驻）
+PAGE_IDLE_MAX = 90
+_page_lock = threading.Lock()
+_page_state = {"ever": False, "last": 0.0}
+_inflight   = {"n": 0}          # 部署/检查进行中，豁免自动退出
 
 F_DEFAULT = RIME_DIR / "default.custom.yaml"
 F_SQUIRREL = RIME_DIR / "squirrel.custom.yaml"
@@ -403,6 +408,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+        elif u.path == "/api/heartbeat":
+            _touch_page()
+            self._json({"ok": True})
         elif u.path == "/api/state":
             try:
                 self._json(build_state())
@@ -503,6 +511,13 @@ class Handler(BaseHTTPRequestHandler):
 
     # ── 部署 ─────────────────────────────────────────────────
     def _deploy(self):
+        _inflight["n"] += 1          # 部署期间页面可关，服务不退出
+        try:
+            self._deploy_inner()
+        finally:
+            _inflight["n"] -= 1
+
+    def _deploy_inner(self):
         """触发 Squirrel --reload，并轮询等待后台重建真实完成。
 
         --reload 只向运行中的 Squirrel 发「重新部署」通知：命令毫秒级返回
@@ -563,10 +578,14 @@ class Handler(BaseHTTPRequestHandler):
 
     # ── 检查 ─────────────────────────────────────────────────
     def _check(self):
-        p = subprocess.run(["ruby", str(SCRIPT_DIR / "check_custom_patch.rb")],
-                           capture_output=True, text=True, timeout=30, cwd=str(RIME_DIR))
-        self._json({"ok": p.returncode == 0,
-                    "out": (p.stdout + p.stderr)[-2000:]})
+        _inflight["n"] += 1
+        try:
+            p = subprocess.run(["ruby", str(SCRIPT_DIR / "check_custom_patch.rb")],
+                               capture_output=True, text=True, timeout=30, cwd=str(RIME_DIR))
+            self._json({"ok": p.returncode == 0,
+                        "out": (p.stdout + p.stderr)[-2000:]})
+        finally:
+            _inflight["n"] -= 1
 
     # ── 恢复 ─────────────────────────────────────────────────
     def _restore(self):
@@ -592,6 +611,32 @@ class Handler(BaseHTTPRequestHandler):
         self._json({"ok": True, "restored": n, "prerestore_backup": cur.name})
 
 
+def _touch_page():
+    with _page_lock:
+        _page_state["ever"] = True
+        _page_state["last"] = time.time()
+
+
+def _watchdog():
+    """无页面访问时自动退出：面板只在被使用时运行。
+
+    判定条件：曾经收到过页面心跳，且距上次心跳超过 PAGE_IDLE_MAX 秒，
+    且无部署/检查进行中。从未有人打开过页面则一直等待
+    （用户可能稍后才在浏览器里打开地址）。
+    """
+    while True:
+        time.sleep(10)
+        with _page_lock:
+            ever, last = _page_state["ever"], _page_state["last"]
+        if not ever:
+            continue
+        if _inflight["n"] > 0:
+            continue
+        if time.time() - last > PAGE_IDLE_MAX:
+            break
+    os._exit(0)
+
+
 def main():
     port = 8877
     for try_port in range(8877, 8890):
@@ -606,10 +651,12 @@ def main():
     url = "http://127.0.0.1:%d/" % port
     print("Rime 设置面板 → %s" % url)
     print("配置目录：%s" % RIME_DIR)
-    print("关闭此窗口即停止面板。")
+    print("页面全部关闭约 %d 秒后服务自动退出；关闭此窗口立即停止。" % PAGE_IDLE_MAX)
+    threading.Thread(target=_watchdog, daemon=True).start()
     try:
         import webbrowser
-        threading.Timer(0.6, lambda: webbrowser.open(url)).start()
+        if not os.environ.get("RIME_PANEL_NO_BROWSER"):
+            threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     except Exception:
         pass
     try:
