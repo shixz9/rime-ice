@@ -14,8 +14,8 @@
    按两个布尔开关分档渲染（librime 的 context:get_option 仅返回布尔值，
    多状态开关的索引不可读，故用两个开关组合三档）：
    - 均关                          → 极简（仅释义，即增强前的行为）
-   - dict_comment_phonetic 开      → 标准（释义 + 音标 + ◆）
-   - dict_comment_detail 开        → 完整（再叠加 ★ 星级 + 考试标签 + 词频）
+   - dict_comment_phonetic 开      → 标准（英文单词 + 音标，不加其他内容）
+   - dict_comment_detail 开        → 完整（英文单词 + 音标 + ◆ + ★ + 标签 + 词频，不依赖音标档开关）
    旧格式词典值（不含 ¤）不进入元数据分支，行为与增强前完全一致。
 --]]
 
@@ -43,7 +43,7 @@ end
 
 local function is_english(s)
     if not s or s == "" then return false end
-    return s:match("^[%a%-%'%s%.%d]+$") ~= nil
+    return s:match("^[%a%-%' \t\n\v\f\r%.%d]+$") ~= nil
 end
 
 local function is_chinese(s)
@@ -68,15 +68,15 @@ local function split_meta(value)
     return head, meta
 end
 
--- 元数据渲染：level 0=极简（不渲染）/ 1=标准（音标+◆）/ 2=完整（+星级+标签+词频）
+-- 元数据渲染：level 0=极简（不渲染）/ 1=标准（仅音标）/ 2=完整（+牛津◆+星级+标签+词频）
 local function render_meta(meta, level)
     if not meta or not level or level < 1 then return "" end
     local out = {}
     if level >= 1 then
         if meta[1] and meta[1] ~= "" then out[#out + 1] = "/" .. meta[1] .. "/" end
-        if meta[3] and meta[3] ~= "" then out[#out + 1] = meta[3] end
     end
     if level >= 2 then
+        if meta[3] and meta[3] ~= "" then out[#out + 1] = meta[3] end
         if meta[2] and meta[2] ~= "" then out[#out + 1] = meta[2] end
         if meta[4] and meta[4] ~= "" then out[#out + 1] = meta[4] end
         local freq = ""
@@ -94,6 +94,17 @@ local function render_meta(meta, level)
     return " " .. table.concat(out, " ")
 end
 
+-- 去掉首尾 ASCII 空白。
+-- 注意：不用 %s 模式——lupa 捆绑的 Lua 5.5 会把字节 0xA0（NBSP 低位，
+-- 如「你」=E4 BD A0 的尾字节）判为空白，啃掉半个 UTF-8 字符产生乱码；
+-- 显式列出 ASCII 空白可保证 Lua 5.4（librime）与 5.5（lupa 单测）行为一致。
+local function trim_ws(s)
+    if not s then return s end
+    s = s:gsub("^[ \t\n\v\f\r]+", "")
+    s = s:gsub("[ \t\n\v\f\r]+$", "")
+    return s
+end
+
 -- 按照释义项个数截断，安全处理 UTF-8 字符
 -- 本地修改：去除英文词性标注（int. n. v. adj. 等），只保留释义本身
 local POS_TAGS = {
@@ -106,7 +117,7 @@ local function strip_pos(s)
     while changed do
         changed = false
         for _, tag in ipairs(POS_TAGS) do
-            local stripped = s:gsub("^" .. tag .. "%.%s*", "")
+            local stripped = s:gsub("^" .. tag .. "%.[ \t\n\v\f\r]*", "")
             if stripped ~= s then
                 s = stripped
                 changed = true
@@ -151,7 +162,7 @@ local function format_head(def_str, max_defs, max_length)
 
     local items = {}
     for item in normalize_seps(def_str):gmatch("([^;]+)") do
-        local trimmed = item:match("^%s*(.-)%s*$") or ""
+        local trimmed = item:match("^[ \t\n\v\f\r]*(.-)[ \t\n\v\f\r]*$") or ""
         trimmed = strip_pos(trimmed)
         if trimmed ~= "" then
             table.insert(items, trimmed)
@@ -191,7 +202,7 @@ local function format_c2e(def_str, max_defs, max_length, level)
 
     local items = {}
     for item in normalize_seps(def_str):gmatch("([^;]+)") do
-        local trimmed = item:match("^%s*(.-)%s*$") or ""
+        local trimmed = item:match("^[ \t\n\v\f\r]*(.-)[ \t\n\v\f\r]*$") or ""
         local head, meta = split_meta(trimmed)
         head = strip_pos(head)
         if head and head ~= "" then
@@ -300,13 +311,12 @@ function M.func(input, env)
 
         if env.enable_e2c and env.ecdict and is_english(text) then
             -- 英译中：优先转为小写查询，若未命中则查原词
-            local lower_text = text:lower():gsub("^%s+", ""):gsub("%s+$", "")
+            local lower_text = trim_ws(text:lower())
             raw_def = lookup(env.ecdict, lower_text) or lookup(env.ecdict, text)
             is_e2c = true
         elseif env.enable_c2e and env.cedict and is_chinese(text) then
             -- 中译英
-            local clean_text = text:gsub("^%s+", ""):gsub("%s+$", "")
-            raw_def = lookup(env.cedict, clean_text)
+            raw_def = lookup(env.cedict, trim_ws(text))
             is_e2c = false
         end
 
@@ -322,7 +332,7 @@ function M.func(input, env)
                 if cand.comment and cand.comment ~= "" then
                     cand.comment = cand.comment .. formatted
                 else
-                    local prefix = env.comment_prefix:match("^%s*(.-)$") or ""
+                    local prefix = env.comment_prefix:match("^[ \t\n\v\f\r]*(.-)$") or ""
                     cand.comment = prefix .. formatted_def .. env.comment_suffix
                 end
             end

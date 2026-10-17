@@ -5,7 +5,7 @@ dict_comment_filter.lua 的运行时单测（不依赖 Rime/Squirrel，用 lupa 
 
 验证内容：
 1. ¤ 元数据解析（音标/星级/牛津◆/考试标签/BNC/FRQ 六段）
-2. 三档渲染：极简(0) / 标准(1, 音标+◆) / 完整(2, +星级+标签+词频)
+2. 三档渲染：极简(0) / 标准(1, 仅音标) / 完整(2, +◆+星级+标签+词频)
 3. 旧格式值（不含 ¤）向后兼容
 4. 中英双向：分号切分、去词性、max_defs 截断、max_length 兜底
 5. 与候选已有 comment 的 append 行为
@@ -70,8 +70,11 @@ emit("c2e-你好-完整", run({ text = "你好" }, true, true))         -- 默�
 emit("c2e-你好-长注释", run({ text = "你好" }, true, true,
     make_env(true, true, nil, nil, 100)))                        -- 放宽长度，验证双译词完整渲染
 emit("c2e-电脑-完整", run({ text = "电脑" }, true, true))
+emit("c2e-电脑-标准", run({ text = "电脑" }, true, false))         -- 标准档只到音标（牛津◆不上标准档）
 emit("c2e-中国-标准", run({ text = "中国" }, true, false))
 emit("c2e-中国-极简", run({ text = "中国" }, false, false))
+emit("c2e-你-标准", run({ text = "你" }, true, false))            -- 尾字节 0xA0 回归哨兵
+emit("c2e-你-完整", run({ text = "你" }, true, true))
 -- 英译中（e2c，ecdict）
 emit("e2c-chain-完整", run({ text = "chain" }, true, true))
 emit("e2c-chain-标准", run({ text = "chain" }, true, false))
@@ -134,7 +137,7 @@ def main():
         return 2
 
     ec = load_dict(ECDICT_TXT, {"chain", "China", "hello", "asdf"})
-    ce = load_dict(CEDICT_TXT, {"中国", "你好", "电脑"})
+    ce = load_dict(CEDICT_TXT, {"中国", "你好", "电脑", "你"})
     print("词典样本：ecdict=%s" % sorted(ec))
     print("         cedict=%s" % sorted(ce))
 
@@ -151,10 +154,13 @@ def main():
         "c2e-你好-完整": "hello /hә'lәu/ ◆ ★★★ 中·高 BNC2319/2238; hi /ha…",
         "c2e-你好-长注释": "hello /hә'lәu/ ◆ ★★★ 中·高 BNC2319/2238; hi /hai/ ◆ ★★★ 高 BNC6210/2072",
         "c2e-电脑-完整": "computer /kәm'pju:tә/ ◆ ★★★★ 中·高·雅 BNC580/589",
+        "c2e-电脑-标准": "computer /kәm'pju:tә/",
         "c2e-中国-标准": "China /'tʃainә/",
         "c2e-中国-极简": "China",
+        "c2e-你-标准": "you /ju:/",
+        "c2e-你-完整": "you /ju:/ ◆ ★★★★★ 中·高 BNC15/14",
         "e2c-chain-完整": "链 /tʃein/ ◆ ★★★ 高·四·六·研 BNC1835/1805",
-        "e2c-chain-标准": "链 /tʃein/ ◆",
+        "e2c-chain-标准": "链 /tʃein/",
         "e2c-chain-极简": "链",
         "e2c-China-完整": "中国 /'tʃainә/ ★★ 中·高 BNC1973/7946",
         "e2c-asdf-无meta": "asdf",

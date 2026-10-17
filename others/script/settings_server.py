@@ -159,7 +159,7 @@ def build_state():
         "rank_commit":  any(p == "lua_processor@*comment_rank_commit"
                             for p in (e_custom.get("patch", {}).get("engine/processors") or [])),
         "comment_phonetic": bool(switch_state(e_custom, "dict_comment_phonetic", 1)),
-        "comment_detail":   bool(switch_state(e_custom, "dict_comment_detail", 1)),
+        "comment_detail":   bool(switch_state(e_custom, "dict_comment_detail", 0)),
         "dicts_on":     [t.split("#")[0].strip().replace("cn_dicts/", "", 1) for t in
                          (dict_custom.get("import_tables") or [])],
     }
@@ -352,8 +352,8 @@ def gen_rime_ice_custom(m, upstream_processors, upstream_bindings=None, upstream
     L.append("    reset: %d" % (1 if m.get("comment_phonetic", True) else 0))
     L.append("  switches/@%d:" % (n_sw + 1))
     L.append("    name: dict_comment_detail")
-    L.append("    states: [ 简注, 详注 ]")
-    L.append("    reset: %d" % (1 if m.get("comment_detail", True) else 0))
+    L.append("    states: [ 无考点, 考点详注 ]")
+    L.append("    reset: %d" % (1 if m.get("comment_detail", False) else 0))
     L.append("")
 
     # 档位切换快捷键（Y=音 yīn 标档，X=详 xiáng 注档；F4 方案菜单亦可切换）
@@ -555,7 +555,7 @@ class Handler(BaseHTTPRequestHandler):
             errs.append("Ctrl+E/R 顺位上屏开关不符")
         if bool(got.get("comment_phonetic")) != bool(m.get("comment_phonetic", True)):
             errs.append("学习元数据音标档开关不符")
-        if bool(got.get("comment_detail")) != bool(m.get("comment_detail", True)):
+        if bool(got.get("comment_detail")) != bool(m.get("comment_detail", False)):
             errs.append("学习元数据详注档开关不符")
         if got.get("ctrl_e") != m.get("ctrl_e"):
             errs.append("Ctrl+E 行为不符")

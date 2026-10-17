@@ -3,14 +3,15 @@
 # 方案文件的 custom 补丁：对本方案的 engine/editor 等做修改
 patch:
   # 英语学习元数据档位（详见 lua/dict_comment_filter.lua 头注释）
+  # 默认：标准档=英文单词+注音；完整档（◆/★/标签/词频）按需用 Ctrl+Shift+X 开
   switches/@7:
     name: dict_comment_phonetic
     states: [ 无音标, 音标 ]
     reset: 1
   switches/@8:
     name: dict_comment_detail
-    states: [ 简注, 详注 ]
-    reset: 1
+    states: [ 无考点, 考点详注 ]
+    reset: 0
 
   # 学习档位切换快捷键
   key_binder/bindings/@5:
