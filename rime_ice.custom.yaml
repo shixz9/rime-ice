@@ -1,7 +1,26 @@
 # 雾凇拼音方案级补丁（rime_ice.custom.yaml）
-# 由「Rime 设置面板」生成于 2026-10-17 14:10；手动修改会被下次面板保存覆盖
+# 由「Rime 设置面板」生成于 2026-10-17 15:37；手动修改会被下次面板保存覆盖
 # 方案文件的 custom 补丁：对本方案的 engine/editor 等做修改
 patch:
+  # 英语学习元数据档位（详见 lua/dict_comment_filter.lua 头注释）
+  switches/@7:
+    name: dict_comment_phonetic
+    states: [ 无音标, 音标 ]
+    reset: 1
+  switches/@8:
+    name: dict_comment_detail
+    states: [ 简注, 详注 ]
+    reset: 1
+
+  # 学习档位切换快捷键
+  key_binder/bindings/@5:
+    { when: always, accept: "Control+Shift+Y", toggle: dict_comment_phonetic }
+  key_binder/bindings/@6:
+    { when: always, accept: "Control+Shift+X", toggle: dict_comment_detail }
+
+  # 释义最大字符数：45 → 60，为学习元数据留空间（超出仍截断加 …）
+  dict_comment_filter/max_length: 60
+
   # Ctrl+E：只上屏释义，不输出中文词
   "editor/bindings/Control+e": commit_comment
 

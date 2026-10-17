@@ -5,6 +5,12 @@
 优化亮点:
   - 采用 OpenCC 官方预编译二进制格式 (.ocd2, Marisa-Trie 内存映射)
   - 彻底消灭文本解析与 Trie 动态构建耗时，初次加载耗时由 2 秒缩短至 < 5 毫秒（绝对零延迟秒开）！
+  - 英语学习增强（2026-10-17）：词条值附加 ¤ 分隔的学习元数据——
+    音标 / 柯林斯星级（★1-5）/ 牛津核心词（◆）/ 考试标签（中高六十研托雅G）/
+    BNC / FRQ 词频。由 lua/dict_comment_filter.lua 按开关分档渲染：
+    dict_comment_phonetic（音标档）、dict_comment_detail（详注档）。
+    汉英方向对每条英文译词回查 ECDICT 元数据（仅单英文词附加，短语不附加）。
+    旧格式值（不含 ¤）可被 Lua 自动识别，向后兼容。
 输出:
   - opencc/ecdict.txt / opencc/ecdict.ocd2 / opencc/ecdict.json
   - opencc/cedict.txt / opencc/cedict.ocd2 / opencc/cedict.json
@@ -26,9 +32,31 @@ QINGJIAN_EN_TSV = os.path.join(ROOT_DIR, "others", "qingjian_glossary_en.tsv")
 ECDICT_CSV = os.path.join(ROOT_DIR, "ecdict.csv")
 CEDICT_TXT = os.path.join(ROOT_DIR, "cedict_1_0_ts_utf-8_mdbg.txt")
 
+# ── 学习元数据（2026-10-17 新增） ────────────────────────────────
+# 字段分隔符 ¤（U+00A4，UTF-8 字节 \194\164，Lua 侧同字节匹配）；
+# 该字符不会出现在释义与音标中。值格式：
+#   释义¤音标¤星级¤牛津◆¤标签¤BNC¤FRQ      （尾部空段可省略）
+FIELD_SEP = "\u00a4"
+EMPTY_META = ("", "", "", "", "", "")
+
+TAG_MAP = {  # ECDICT 考试标签 → 单字（紧凑显示；综合提升阶段全量显示）
+    "zk": "中", "gk": "高", "cet4": "四", "cet6": "六", "ky": "研",
+    "toefl": "托", "ielts": "雅", "gre": "G",
+}
+
 
 def find_opencc_dict_tool() -> str:
     """自动探测系统中的 opencc_dict 编译工具"""
+    # 0. PyPI opencc 包自带的 C++ 二进制（pip install opencc 即有）
+    try:
+        import opencc
+        pkg_dir = os.path.dirname(os.path.abspath(opencc.__file__))
+        candidate = os.path.join(pkg_dir, "clib", "bin", "opencc_dict")
+        if os.path.exists(candidate):
+            return candidate
+    except Exception:
+        pass
+
     # 1. PATH 中的 opencc_dict
     which_path = shutil.which("opencc_dict")
     if which_path:
@@ -56,7 +84,12 @@ def find_opencc_dict_tool() -> str:
         import site
 
         for user_site in site.getsitepackages() + [site.getusersitepackages()]:
-            bin_p = os.path.join(user_site, "opencc", "clib", "bin", "opencc_dict.exe")
+            bin_p = os.path.join(user_site, "opencc", "clib", "bin", "opencc_dict")
+            if os.path.exists(bin_p):
+                return bin_p
+            bin_p = os.path.join(
+                user_site, "opencc", "clib", "bin", "opencc_dict.exe"
+            )
             if os.path.exists(bin_p):
                 return bin_p
     except Exception:
@@ -118,12 +151,107 @@ def format_senses(senses: list[str]) -> str:
     return combined.replace(" ", "\u00a0")
 
 
+# ── 学习元数据构建 ──────────────────────────────────────────────
+
+def build_meta(phonetic="", collins="", oxford="", tag="", bnc="", frq=""):
+    """六项学习字段 → 净化元组 (音标, 星级, 牛津◆, 标签, bnc, frq)
+
+    净化规则：删除 Lua 侧用作分隔符的 ; , ， 、 及空白；
+    多读音逗号改斜杠（/ˈʃænhaɪ, ʃænˈhaɪ/ → /ˈʃænhaɪ/ʃænˈhaɪ/）。
+    """
+    ph = re.sub(r"[;,，、\s]+", "", (phonetic or "").replace(",", "/"))
+    try:
+        n = int(float((collins or "0").strip()))
+    except Exception:
+        n = 0
+    stars = "★" * n if 1 <= n <= 5 else ""
+    ox = "◆" if (oxford or "").strip() not in ("", "0") else ""
+    tags = []
+    for k in (tag or "").split():
+        m = TAG_MAP.get(k)
+        if m and m not in tags:
+            tags.append(m)
+    # ECDICT 以 0 表示无词频数据，按空值处理（避免注释出现 BNC0/FRQ0）
+    bnc_v = (bnc or "").strip()
+    frq_v = (frq or "").strip()
+    return (ph, stars, ox, "·".join(tags),
+            "" if bnc_v in ("", "0") else bnc_v,
+            "" if frq_v in ("", "0") else frq_v)
+
+
+def meta_suffix(meta) -> str:
+    """元组 → ¤ 分隔后缀；六项全空返回空串（保持旧格式兼容）"""
+    parts = list(meta)
+    while parts and parts[-1] == "":
+        parts.pop()
+    if not parts:
+        return ""
+    return FIELD_SEP + FIELD_SEP.join(parts)
+
+
+def load_meta_index():
+    """扫 ECDICT CSV 建立 词 → 学习元数据 索引（供主库与汉英译词回查）"""
+    index = {}
+    if not os.path.exists(ECDICT_CSV):
+        return index
+    with open(ECDICT_CSV, "r", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            w = row.get("word", "").strip()
+            if not w:
+                continue
+            index[w.lower()] = build_meta(
+                row.get("phonetic", ""), row.get("collins", ""),
+                row.get("oxford", ""), row.get("tag", ""),
+                row.get("bnc", ""), row.get("frq", ""))
+    return index
+
+
+_POS_RE = re.compile(r"^(?:[a-z]+\.\s*)?(.*)$", re.I)
+_SINGLE_WORD_RE = re.compile(r"^[A-Za-z][A-Za-z'\-]*$")
+
+
+def word_meta_suffix(item_text: str, meta_index) -> str:
+    """从 'n. China' / 'v. chew' 释义项提取英文单词并回查元数据后缀。
+
+    仅当去掉词性标注后是完整单个英文词才附加（短语如 'a communist nation'
+    不加，避免元数据错配到首词）。
+    """
+    m = _POS_RE.match(item_text.strip())
+    word = (m.group(1) or "").strip()
+    if _SINGLE_WORD_RE.match(word):
+        return meta_suffix(meta_index.get(word.lower(), EMPTY_META))
+    return ""
+
+
+def format_senses_with_meta(senses: list[str], meta_index) -> str:
+    """qingjian-en 用：每条释义回查元数据后 '; ' 拼接（替代 format_senses）"""
+    valid = [s.strip() for s in senses if s.strip()]
+    if not valid:
+        return ""
+    out = [s + word_meta_suffix(s, meta_index) for s in valid[:3]]
+    combined = "; ".join(out)
+    combined = re.sub(r"\s+", " ", combined).strip()
+    return combined.replace(" ", "\u00a0")
+
+
 def build_ecdict(opencc_tool: str):
     print("Building ECDICT (High-Frequency & Practical Words)...")
     ice_en_words = load_rime_ice_en_words()
+    meta_index = load_meta_index()
+    print(f"Learning-meta index: {len(meta_index)} words")
     entries = {}
 
-    # 1. 优先加载清简精校英中词库（LLM 精准高频释义 + 词性）
+    def add(word: str, trans: str, meta):
+        suffix = meta_suffix(meta)
+        entries[word] = trans + suffix
+        word_lower = word.lower()
+        if word_lower not in entries:
+            entries[word_lower] = trans + suffix
+        word_cap = word.capitalize()
+        if word_cap not in entries:
+            entries[word_cap] = trans + suffix
+
+    # 1. 优先加载清简精校英中词库（LLM 精准高频释义 + 词性；元数据自 CSV 回查）
     qj_count = 0
     if os.path.exists(QINGJIAN_ZH_TSV):
         print(f"Loading primary lexicon from {QINGJIAN_ZH_TSV}...")
@@ -139,17 +267,11 @@ def build_ecdict(opencc_tool: str):
                     trans = format_senses(parts[1:])
                     if not trans:
                         continue
-                    entries[word] = trans
-                    word_lower = word.lower()
-                    if word_lower not in entries:
-                        entries[word_lower] = trans
-                    word_cap = word.capitalize()
-                    if word_cap not in entries:
-                        entries[word_cap] = trans
+                    add(word, trans, meta_index.get(word.lower(), EMPTY_META))
                     qj_count += 1
         print(f"Loaded {qj_count} high-quality entries from Qingjian glossary-zh.")
 
-    # 2. 从传统 ECDICT 补充清简未覆盖但雾凇输入法包含的词条（兜底）
+    # 2. 从传统 ECDICT 补充清简未覆盖但雾凇输入法包含的词条（兜底；元数据取本行）
     fallback_count = 0
     if os.path.exists(ECDICT_CSV):
         print(f"Loading fallbacks from {ECDICT_CSV}...")
@@ -161,7 +283,6 @@ def build_ecdict(opencc_tool: str):
                     continue
 
                 word_lower = word.lower()
-                # 若清简已收录，跳过，保留清简的高质量释义
                 if word in entries or word_lower in entries:
                     continue
 
@@ -192,12 +313,8 @@ def build_ecdict(opencc_tool: str):
                 if not cleaned:
                     continue
 
-                entries[word] = cleaned
-                if word_lower not in entries:
-                    entries[word_lower] = cleaned
-                word_cap = word.capitalize()
-                if word_cap not in entries:
-                    entries[word_cap] = cleaned
+                add(word, cleaned, build_meta(
+                    row.get("phonetic", ""), collins, oxford, tag, bnc, frq))
                 fallback_count += 1
         print(f"Supplemented {fallback_count} entries from ECDICT CSV.")
 
@@ -210,7 +327,6 @@ def build_ecdict(opencc_tool: str):
     dict_type = "text"
     dict_file = "ecdict.txt"
 
-    # 尝试编译为二进制 .ocd2
     if opencc_tool:
         print("Compiling ecdict.ocd2 binary dictionary...")
         try:
@@ -278,13 +394,18 @@ def clean_cedict_single_definition(d: str):
     return d if d else None
 
 
-def clean_cedict_definitions(defs_str: str) -> str:
+def clean_cedict_def_list(defs_str: str):
     raw_defs = [d.strip() for d in defs_str.split("/") if d.strip()]
     clean_defs = []
     for d in raw_defs:
         c = clean_cedict_single_definition(d)
         if c and c not in clean_defs:
             clean_defs.append(c)
+    return clean_defs
+
+
+def clean_cedict_definitions(defs_str: str) -> str:
+    clean_defs = clean_cedict_def_list(defs_str)
     if not clean_defs:
         return ""
     combined = "; ".join(clean_defs[:3])
@@ -292,8 +413,20 @@ def clean_cedict_definitions(defs_str: str) -> str:
     return combined.replace(" ", "\u00a0")
 
 
+def format_cedict_value(clean_defs, meta_index) -> str:
+    """CC-CEDICT 释义列表 → 逐条回查元数据后拼接（旧 clean_cedict_definitions 的增强版）"""
+    if not clean_defs:
+        return ""
+    out = [x + word_meta_suffix(x, meta_index) for x in clean_defs[:3]]
+    combined = "; ".join(out)
+    combined = re.sub(r"\s+", " ", combined).strip()
+    return combined.replace(" ", "\u00a0")
+
+
 def build_cedict(opencc_tool: str):
     print("Building CEDICT (Chinese to English Dictionary)...")
+    meta_index = load_meta_index()
+    print(f"Learning-meta index (cedict): {len(meta_index)} words")
     entries = {}
 
     # 1. 优先加载清简精校中英词库（覆盖 23.2 万常用及领域词，消除歧义古义）
@@ -309,7 +442,7 @@ def build_cedict(opencc_tool: str):
                     word = parts[0].strip()
                     if not word:
                         continue
-                    trans = format_senses(parts[1:])
+                    trans = format_senses_with_meta(parts[1:], meta_index)
                     if not trans:
                         continue
                     entries[word] = trans
@@ -330,7 +463,8 @@ def build_cedict(opencc_tool: str):
                     trad, simp, pinyin, defs = m.groups()
                     if simp in entries:
                         continue
-                    cleaned = clean_cedict_definitions(defs)
+                    cleaned = format_cedict_value(
+                        clean_cedict_def_list(defs), meta_index)
                     if not cleaned:
                         continue
                     entries[simp] = cleaned

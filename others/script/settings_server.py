@@ -109,6 +109,20 @@ def ctrl_e_state(e_custom):
     has = any(isinstance(k, str) and k.endswith("Control+e") for k in keys)
     return patch.get("editor/bindings/Control+e", "commit_comment") if has else "off"
 
+def switch_state(e_custom, name, default=1):
+    """从 rime_ice.custom.yaml 补丁中读取指定名字 switch 的 reset 值（0/1）"""
+    patch = e_custom.get("patch") or {}
+    if not isinstance(patch, dict):
+        return default
+    for k, v in patch.items():
+        if isinstance(k, str) and k.startswith("switches/@") and isinstance(v, dict) \
+                and v.get("name") == name:
+            try:
+                return 1 if int(v.get("reset", default)) == 1 else 0
+            except (TypeError, ValueError):
+                return default
+    return default
+
 def build_state():
     d_custom, d_raw = read_json_file(F_DEFAULT)
     s_custom, s_raw = read_json_file(F_SQUIRREL)
@@ -144,6 +158,8 @@ def build_state():
         "ctrl_e":       ctrl_e_state(e_custom),
         "rank_commit":  any(p == "lua_processor@*comment_rank_commit"
                             for p in (e_custom.get("patch", {}).get("engine/processors") or [])),
+        "comment_phonetic": bool(switch_state(e_custom, "dict_comment_phonetic", 1)),
+        "comment_detail":   bool(switch_state(e_custom, "dict_comment_detail", 1)),
         "dicts_on":     [t.split("#")[0].strip().replace("cn_dicts/", "", 1) for t in
                          (dict_custom.get("import_tables") or [])],
     }
@@ -317,12 +333,43 @@ def gen_squirrel_custom(m):
     L.append("")
     return "\n".join(L)
 
-def gen_rime_ice_custom(m, upstream_processors):
+def gen_rime_ice_custom(m, upstream_processors, upstream_bindings=None, upstream_switches=None):
     L = []
     L.append("# 雾凇拼音方案级补丁（rime_ice.custom.yaml）")
     L.append("# 由「Rime 设置面板」生成于 %s；手动修改会被下次面板保存覆盖" % datetime.now().strftime("%Y-%m-%d %H:%M"))
     L.append("# 方案文件的 custom 补丁：对本方案的 engine/editor 等做修改")
     L.append("patch:")
+
+    # 学习元数据档位开关（P1 富化的显示控制）
+    # 说明：librime 的 context:get_option 仅返回布尔值，多状态开关索引不可读，
+    # 故用两个布尔开关组合三档：均关=极简 / phonetic=标准(+音标◆) / detail=完整(+星级标签词频)。
+    # 追加索引基于上游列表当前长度；上游新增项后需顺延（check_custom_patch.rb 会校验）。
+    n_sw = len(upstream_switches) if upstream_switches else 7
+    L.append("  # 英语学习元数据档位（详见 lua/dict_comment_filter.lua 头注释）")
+    L.append("  switches/@%d:" % n_sw)
+    L.append("    name: dict_comment_phonetic")
+    L.append("    states: [ 无音标, 音标 ]")
+    L.append("    reset: %d" % (1 if m.get("comment_phonetic", True) else 0))
+    L.append("  switches/@%d:" % (n_sw + 1))
+    L.append("    name: dict_comment_detail")
+    L.append("    states: [ 简注, 详注 ]")
+    L.append("    reset: %d" % (1 if m.get("comment_detail", True) else 0))
+    L.append("")
+
+    # 档位切换快捷键（Y=音 yīn 标档，X=详 xiáng 注档；F4 方案菜单亦可切换）
+    n_bd = len(upstream_bindings) if upstream_bindings else 5
+    L.append("  # 学习档位切换快捷键")
+    L.append("  key_binder/bindings/@%d:" % n_bd)
+    L.append('    { when: always, accept: "Control+Shift+Y", toggle: dict_comment_phonetic }')
+    L.append("  key_binder/bindings/@%d:" % (n_bd + 1))
+    L.append('    { when: always, accept: "Control+Shift+X", toggle: dict_comment_detail }')
+    L.append("")
+
+    # 释义长度兜底 45→60：学习元数据（音标/星级/标签/词频）需要展示空间
+    L.append("  # 释义最大字符数：45 → 60，为学习元数据留空间（超出仍截断加 …）")
+    L.append("  dict_comment_filter/max_length: 60")
+    L.append("")
+
     if m.get("ctrl_e", "off") != "off":
         action = {"commit_text":  "候选 + 释义一起上屏（原版行为）",
                   "commit_comment": "只上屏释义，不输出中文词"}.get(m["ctrl_e"], m["ctrl_e"])
@@ -454,7 +501,11 @@ class Handler(BaseHTTPRequestHandler):
         new_files = {
             F_DEFAULT:   gen_default_custom(m),
             F_SQUIRREL:  gen_squirrel_custom(m),
-            F_SCHEMA:    gen_rime_ice_custom(m, schema_src.get("engine", {}).get("processors")),
+            F_SCHEMA:    gen_rime_ice_custom(
+                m,
+                schema_src.get("engine", {}).get("processors"),
+                schema_src.get("key_binder", {}).get("bindings") or [],
+                schema_src.get("switches") or []),
             F_DICT:      patch_rime_ice_dict(m),
         }
         # 写文件（先备份，再原子替换）
@@ -502,6 +553,10 @@ class Handler(BaseHTTPRequestHandler):
             errs.append("候选布局不符")
         if bool(got.get("rank_commit")) != bool(m.get("rank_commit")):
             errs.append("Ctrl+E/R 顺位上屏开关不符")
+        if bool(got.get("comment_phonetic")) != bool(m.get("comment_phonetic", True)):
+            errs.append("学习元数据音标档开关不符")
+        if bool(got.get("comment_detail")) != bool(m.get("comment_detail", True)):
+            errs.append("学习元数据详注档开关不符")
         if got.get("ctrl_e") != m.get("ctrl_e"):
             errs.append("Ctrl+E 行为不符")
         for tid, _, _ in DICT_TABLES:

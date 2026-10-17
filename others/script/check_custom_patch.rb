@@ -124,6 +124,32 @@ end
   puts "== #{dict_file}: import_tables #{imports.size} 个均存在" if imports.all? { |n| File.exist?(File.join(RIME_DIR, "#{n}.dict.yaml")) }
 end
 
+# 5. rime_ice.custom.yaml 追加索引（学习元数据档位开关 + 快捷键）
+#    switches/@N、key_binder/bindings/@N 的索引基于上游列表长度；
+#    上游增删条目后应重基线（用设置面板保存一次即自动按上游长度重算）。
+patch_h   = schema_c["patch"].is_a?(Hash) ? schema_c["patch"] : {}
+sw_keys   = patch_h.keys.grep(/\Aswitches\/@\d+\z/)
+bd_keys   = patch_h.keys.grep(/\Akey_binder\/bindings\/@\d+\z/)
+custom_sw = sw_keys.filter_map { |k| patch_h[k].is_a?(Hash) ? patch_h[k]["name"] : nil }
+custom_bd = bd_keys.filter_map { |k| patch_h[k].is_a?(Hash) ? patch_h[k]["accept"] : nil }
+up_sw_n   = (schema["switches"] || []).size
+up_bd_n   = (schema.dig("key_binder", "bindings") || []).size
+puts "== 追加索引: 上游 switches #{up_sw_n} 个 / bindings #{up_bd_n} 条"
+%w[dict_comment_phonetic dict_comment_detail].each do |name|
+  problems << "MISSING rime_ice.custom.yaml 缺少学习档位开关: #{name}" unless custom_sw.include?(name)
+end
+problems << "MISSING rime_ice.custom.yaml 缺少快捷键: Control+Shift+Y" unless custom_bd.include?("Control+Shift+Y")
+problems << "MISSING rime_ice.custom.yaml 缺少快捷键: Control+Shift+X" unless custom_bd.include?("Control+Shift+X")
+sw_idx = sw_keys.map { |k| k[/\d+/].to_i }
+bd_idx = bd_keys.map { |k| k[/\d+/].to_i }
+if sw_idx.all? { |i| i >= up_sw_n } && bd_idx.all? { |i| i >= up_bd_n }
+  puts "   OK 追加索引位于列表末尾（switches@#{sw_idx.join("/")}，bindings@#{bd_idx.join("/")}）"
+else
+  puts "   WARN 追加索引落后于上游长度（switches@#{sw_idx.join("/")} vs 上游 #{up_sw_n}，" \
+       "bindings@#{bd_idx.join("/")} vs 上游 #{up_bd_n}）"
+  puts "        不影响功能，但自定义项会插在上游新条目之前；用设置面板保存一次即自动重基线"
+end
+
 # 汇总
 puts
 if problems.empty?
