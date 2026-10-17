@@ -4,6 +4,7 @@
 --   Ctrl+R → 上屏注释中的第 2 个英文词（hi）
 -- 仅处理含 ASCII 分号的注释（中译英方向的拼接格式）；
 -- 英文候选的中文注释用全角「；」，不会进入此分支，按键放行给编辑器原逻辑。
+-- 候选无注释时吞键（不输出），避免回落 commit_comment 上屏空字符串。
 
 local kAccepted = 1
 local kNoop = 2
@@ -29,6 +30,9 @@ function M.func(key, env)
     local cand = ctx:get_selected_candidate()
     if not cand then return kNoop end
     local comment = cand.comment or ""
+
+    -- 候选无注释：吞键，避免回落 commit_comment 上屏空字符串
+    if comment == "" then return kAccepted end
 
     -- 中译英注释以 ASCII "; " 拼接；无分号（单词数不足）则放行给编辑器
     if not comment:find(";") then return kNoop end

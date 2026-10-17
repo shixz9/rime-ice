@@ -371,7 +371,7 @@ pre.log{
 
   <!-- ⑤ 释义上屏 -->
   <section id="sec-ctrl-e">
-    <p class="sec-desc">对应 rime_ice.custom.yaml：Ctrl+E 在候选高亮时的行为，以及中英词典释义管线相关处理器。</p>
+    <p class="sec-desc">对应 rime_ice.custom.yaml：Ctrl+E / Ctrl+R 在候选高亮时的行为，以及中英词典释义管线相关处理器。</p>
     <div class="card">
       <div class="card-title">Ctrl+E 行为</div>
       <div class="radios" id="ctrl-e-radios">
@@ -390,11 +390,21 @@ pre.log{
       </div>
     </div>
     <div class="card">
-      <div class="card-title">英文候选顺位上屏</div>
+      <div class="card-title">顺位上屏英文译词（自定义项）</div>
       <div class="row">
-        <div class="grow"><div class="label">Ctrl+E / Ctrl+R 按顺位上屏英文词</div>
-          <div class="d">高亮英文候选时：Ctrl+E 上屏第 1 个英文词，Ctrl+R 上屏第 2 个（需上方 Ctrl+E 已开启）</div></div>
+        <div class="grow"><div class="label">启用 Ctrl+E / Ctrl+R 顺位上屏</div>
+          <div class="d">对<b>第一个中文候选词</b>的英文注释（CEDICT）按「; 」拆词后顺位上屏；无注释时按键不输出任何内容</div></div>
         <div class="ctl"><label class="sw"><input type="checkbox" id="rank-commit"><i></i></label></div>
+      </div>
+      <div class="row">
+        <div class="grow"><div class="label"><kbd>Ctrl</kbd><kbd>E</kbd>　上屏第 1 个英文译词</div>
+          <div class="d">如高亮「你好」（注释 hello; hi）→ 上屏 <b>hello</b></div></div>
+        <div class="ctl"><span class="muted">自定义项 ①</span></div>
+      </div>
+      <div class="row">
+        <div class="grow"><div class="label"><kbd>Ctrl</kbd><kbd>R</kbd>　上屏第 2 个英文译词</div>
+          <div class="d">如高亮「你好」（注释 hello; hi）→ 上屏 <b>hi</b>；注释不足 2 段时按键放行不动作</div></div>
+        <div class="ctl"><span class="muted">自定义项 ②</span></div>
       </div>
     </div>
     <div class="card">
@@ -485,7 +495,7 @@ const SECTIONS = [
   ["schemas","输入方案",ICON.schemas],
   ["keys","按键绑定",ICON.keys],
   ["style","候选外观",ICON.style],
-  ["ctrlE","释义上屏",ICON.ctrlE],
+  ["ctrl-e","释义上屏",ICON.ctrlE],
   ["dicts","词库挂载",ICON.dicts],
   ["ops","部署与维护",ICON.ops],
 ];
@@ -697,7 +707,7 @@ function collect(){
              corner_radius: +$('[data-step="corner_radius"] .val').textContent,
              inline_preedit: $("#inline-preedit").checked,
              color_scheme: seg($("#seg-scheme"))==="system" ? "system" : ($("#color-scheme").value.trim()||"purity_of_form_custom") },
-    ctrl_e: $("#ctrl-e-radios .radio.on").dataset.v,
+    ctrl_e: (()=>{ const on = $("#ctrl-e-radios .radio.on"); return on ? on.dataset.v : "off"; })(),
     rank_commit: $("#rank-commit").checked,
     dicts_on: $$("#dict-list .check.on").map(el=>el.dataset.id),
   };

@@ -1,5 +1,5 @@
 # 雾凇拼音方案级补丁（rime_ice.custom.yaml）
-# 由「Rime 设置面板」生成于 2026-10-17 13:25；手动修改会被下次面板保存覆盖
+# 由「Rime 设置面板」生成于 2026-10-17 14:10；手动修改会被下次面板保存覆盖
 # 方案文件的 custom 补丁：对本方案的 engine/editor 等做修改
 patch:
   # Ctrl+E：只上屏释义，不输出中文词
@@ -9,7 +9,7 @@ patch:
   engine/processors:
     - lua_processor@*select_character
     - lua_processor@*dict_commit_processor
-    - lua_processor@*comment_rank_commit   # 新增：英文候选 Ctrl+E/R 按顺位上屏释义
+    - lua_processor@*comment_rank_commit   # 新增：中文候选英文注释 Ctrl+E/R 按顺位上屏
     - lua_processor@*markdown_processor
     - ascii_composer
     - recognizer

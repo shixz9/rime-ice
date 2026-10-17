@@ -338,7 +338,7 @@ def gen_rime_ice_custom(m, upstream_processors):
     for p in procs:
         L.append("    - %s" % p)
         if p.endswith("dict_commit_processor") and m.get("rank_commit"):
-            L.append("    - lua_processor@*comment_rank_commit   # 新增：英文候选 Ctrl+E/R 按顺位上屏释义")
+            L.append("    - lua_processor@*comment_rank_commit   # 新增：中文候选英文注释 Ctrl+E/R 按顺位上屏")
     L.append("")
     return "\n".join(L)
 
