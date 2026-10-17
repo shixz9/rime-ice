@@ -6,7 +6,7 @@
 #   GET  /            → 面板页面
 #   GET  /api/state   → 当前配置（解析后的设置模型 + 原始 YAML 文本）
 #   POST /api/save    → 按模型重写 *.custom.yaml / rime_ice.dict.yaml
-#   POST /api/deploy  → 触发 Squirrel --reload 重新部署
+#   POST /api/deploy  → 触发 Squirrel --reload 并轮询等待后台重建完成
 #   POST /api/check   → 运行 others/script/check_custom_patch.rb 校验漂移
 #   POST /api/restore → 从 .settings_backup/<ts>/ 恢复备份
 #
@@ -22,6 +22,7 @@ from urllib.parse import urlparse
 RIME_DIR   = Path(__file__).resolve().parent.parent.parent   # ~/Library/Rime（others/script/ 的上两级）
 SCRIPT_DIR = RIME_DIR / "others" / "script"
 BACKUP_DIR = SCRIPT_DIR / ".settings_backup"
+BUILD_DIR  = RIME_DIR / "build"                # 重建产物目录（轮询部署完成用）
 PANEL_HTML = SCRIPT_DIR / "settings_panel.html"
 SQUIRREL   = "/Library/Input Methods/Squirrel.app/Contents/MacOS/Squirrel"
 
@@ -502,17 +503,63 @@ class Handler(BaseHTTPRequestHandler):
 
     # ── 部署 ─────────────────────────────────────────────────
     def _deploy(self):
+        """触发 Squirrel --reload，并轮询等待后台重建真实完成。
+
+        --reload 只向运行中的 Squirrel 发「重新部署」通知：命令毫秒级返回
+        rc=0，真正的词库编译在输入法进程里跑（主表约 97MB，实测 1-4 分钟）；
+        若上一次重建仍在进行（如连点两次「保存并重新部署」），--reload 会
+        直接 rc=1——这不是真的失败。因此这里不以命令返回值下结论，
+        而是轮询 build/ 产物：
+          产物 mtime 前移        → 正在重建
+          连续 3 次（6 秒）无写入 → 重建完成（state=rebuilt）
+          约 20 秒窗口内无变化   → 配置无变更、无需重建（state=uptodate）
+        """
+        def stamp():
+            try:
+                return {p.name: p.stat().st_mtime_ns for p in BUILD_DIR.glob("*.bin")}
+            except Exception:
+                return {}
+
         t0 = time.time()
+        pre = stamp()
+        pre_max = max(pre.values()) if pre else 0
         try:
             p = subprocess.run([SQUIRREL, "--reload"], capture_output=True,
-                               text=True, timeout=240, cwd=str(RIME_DIR))
-            return self._json({"ok": p.returncode == 0, "rc": p.returncode,
-                               "out": (p.stdout + p.stderr).strip()[-800:],
-                               "seconds": round(time.time() - t0, 1)})
+                               text=True, timeout=60, cwd=str(RIME_DIR))
+            rc, out = p.returncode, (p.stdout + p.stderr).strip()[-400:]
         except subprocess.TimeoutExpired:
-            self._json({"ok": False, "error": "部署超过 240 秒未返回"})
+            return self._json({"ok": False, "state": "hung",
+                               "error": "Squirrel --reload 60 秒无响应"})
         except Exception as e:
-            self._json({"ok": False, "error": str(e)})
+            return self._json({"ok": False, "state": "error",
+                               "error": "调用 Squirrel 失败：%s" % e})
+
+        changed, stable, saw = pre_max, 0, False
+        while time.time() - t0 < 240:
+            time.sleep(2)
+            now = stamp()
+            if not now:
+                continue
+            cur_max = max(now.values())
+            if cur_max > changed:
+                changed, stable, saw = cur_max, 0, True
+            elif saw:
+                stable += 1
+                if stable >= 3:      # 连续 6 秒无新写入 → 重建完成
+                    return self._json({"ok": True, "state": "rebuilt",
+                                       "seconds": round(time.time() - t0, 1)})
+            elif time.time() - t0 > 20 and rc == 0:
+                return self._json({"ok": True, "state": "uptodate",
+                                   "seconds": round(time.time() - t0, 1)})
+        if saw:
+            return self._json({"ok": False, "state": "timeout",
+                               "error": "重建已开始但 240 秒仍未完成（主表较大时可能仍在进行，"
+                                        "稍后可再点「立即部署」确认）",
+                               "seconds": round(time.time() - t0, 1)})
+        return self._json({"ok": rc == 0, "state": "nochange", "rc": rc,
+                           "seconds": round(time.time() - t0, 1), "out": out,
+                           "error": None if rc == 0 else
+                                    "Squirrel 返回 rc=%d 且未观察到重建（可能正忙）" % rc})
 
     # ── 检查 ─────────────────────────────────────────────────
     def _check(self):

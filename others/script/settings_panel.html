@@ -724,7 +724,15 @@ async function reload(){
 async function save(thenDeploy){
   const m = collect();
   $("#foot-info").textContent = "正在写入并自校验…";
-  const r = await api("/api/save", m);
+  let r;
+  try{
+    r = await api("/api/save", m);
+  }catch(e){
+    toast("保存失败：无法连接设置中心", true);
+    log("保存失败：无法连接设置中心（服务可能已停止）。请重新双击「打开设置面板.command」");
+    $("#foot-info").textContent = "保存失败";
+    return false;
+  }
   if(!r.ok){
     toast("保存失败：" + (r.errors||[r.error]).join("；"), true);
     log("保存失败（已自动回滚）：" + (r.errors||[r.error]).join("；"));
@@ -742,17 +750,30 @@ async function save(thenDeploy){
 }
 async function deploy(){
   log("开始重新部署（Squirrel --reload）…");
+  log("词库重建约 1-4 分钟（主表 97MB），请稍候；点击不会中断重建。");
   $("#foot-info").innerHTML = '部署中… <span class="spin"></span>';
   const btn1 = $("#btn-save-deploy"), btn2 = $("#btn-deploy2");
   btn1.disabled = btn2.disabled = true;
-  const r = await api("/api/deploy");
+  let r;
+  try{
+    r = await api("/api/deploy");
+  }catch(e){
+    btn1.disabled = btn2.disabled = false;
+    log("部署失败：无法连接设置中心（服务可能已停止）。请重新双击「打开设置面板.command」");
+    toast("部署失败：无法连接设置中心", true);
+    $("#foot-info").textContent = "部署失败";
+    return false;
+  }
   btn1.disabled = btn2.disabled = false;
   if(r.ok){
-    log("部署完成（" + (r.seconds||"?") + "s）");
+    const s = (r.seconds==null ? "" : "（" + r.seconds + "s）");
+    if(r.state === "uptodate")      log("配置已是最新，无需重建" + s);
+    else if(r.state === "rebuilt")  log("部署完成：词库已重建" + s);
+    else                           log("部署信号已发送" + s);
     toast("部署完成，设置已生效");
     $("#foot-info").textContent = "部署完成";
   }else{
-    log("部署失败：" + (r.error||("rc="+r.rc)+"\n"+r.out));
+    log("部署失败：" + (r.error || ("rc=" + r.rc) + "\n" + r.out));
     toast("部署失败，详见日志", true);
     $("#foot-info").textContent = "部署失败";
   }
