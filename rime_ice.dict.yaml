@@ -15,7 +15,7 @@ import_tables:
   - cn_dicts/others   # 一些杂项
 
   # 建议把扩展词库放到下面，有重复词条时，最上面的权重生效
-  # 古诗词词库（本地生成，源自 chinese-poetry；重新生成用工作区 gen_poetry_dict.py；已纳入 git 跟踪）
+  # 古诗词词库（本地生成，源自 chinese-poetry；重新生成用 others/script/gen_poetry_dict.py <语料目录>；已纳入 git 跟踪）
   - cn_dicts/poetry.classics  # 诗经/论语/楚辞/五代词/蒙学/唐诗三百首（权重 8）
   - cn_dicts/poetry.tang      # 全唐诗 + 补录（权重 5）
   - cn_dicts/poetry.songci    # 全宋词（权重 5）
