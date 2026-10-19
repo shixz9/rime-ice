@@ -47,9 +47,12 @@ others/qingjian_glossary_en.tsv，232,213 词）。
 | [`lua/markdown_processor.lua`](./lua/markdown_processor.lua) | **新建** | Markdown 符号光标联动处理器（自动居中仅 Windows 可用，macOS 会关闭） |
 | [`others/script/rime_cursor.rs`](./others/script/rime_cursor.rs) | **新建** | 原生 Windows 光标定位轻量级动态链接库 C/Rust 源码 |
 | [`others/script/rime_cursor.dll`](./others/script/rime_cursor.dll) | **新建** | 编译后的原生光标控制 DLL 模块，无弹窗、零延迟微调输入光标 |
-| [`rime_ice.schema.yaml`](./rime_ice.schema.yaml) | **修改** | 挂载双向词典释义、词典快捷上屏与 Markdown 语法输入/光标定位插件 |
+| [`rime_ice.schema.yaml`](./rime_ice.schema.yaml) | **上游原样** | 全拼基础方案；功能全部通过 `rime_ice.custom.yaml` 挂载 |
+| [`rime_ice.custom.yaml`](./rime_ice.custom.yaml) | **修改** | 双向释义、快捷上屏、Markdown、学习档位与快捷键 |
 | `double_pinyin*.schema.yaml` | **上游原样** | 本地不启用双拼；文件保留，但不挂载释义/Markdown，也不在 schema_list 中 |
-| [`melt_eng.schema.yaml`](./melt_eng.schema.yaml) | **修改** | 独立英文输入方案同步挂载 `dict_comment_filter` |
+| [`melt_eng.schema.yaml`](./melt_eng.schema.yaml) | **上游原样** | 独立英文方案基础配置 |
+| [`melt_eng.custom.yaml`](./melt_eng.custom.yaml) | **修改** | 英文方案的释义、`Ctrl+D` 快捷上屏与 `Ctrl+Shift+E` |
+| [`default.custom.yaml`](./default.custom.yaml) | **修改** | 只启用全拼、释义开关记忆、按键与面板设置 |
 | [`squirrel.custom.yaml`](./squirrel.custom.yaml) | **修改** | 主题（native 跟随系统）、候选字体/字号、圆角、内嵌编码 |
 
 ## ⚙️ 个性化配置指南
@@ -233,6 +236,7 @@ cd ~/plum
 bash rime-install iDvel/rime-ice
 
 # 3. 双拼用户额外执行，全拼用户跳过。替换「double_pinyin_flypy」为你使用的方案
+#    ⚠️ 本仓库已停用双拼：第 3 步请直接跳过，schema_list 只保留 rime_ice。
 bash rime-install iDvel/rime-ice:others/recipes/config:schema=double_pinyin_flypy
 
 # 4. 如需万象语法模型，额外执行。替换「rime_ice」为你使用的方案
@@ -242,6 +246,7 @@ bash rime-install iDvel/rime-ice:others/recipes/grammar:schema=rime_ice
 
 # 方案名称
 # rime_ice（雾凇拼音、全拼）
+# ⚠️ 本仓库已停用双拼，以下 double_pinyin* 方案不安装、不启用
 # double_pinyin（自然码双拼）
 # double_pinyin_flypy（小鹤双拼）
 # double_pinyin_mspy（微软双拼）

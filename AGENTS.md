@@ -76,5 +76,8 @@ make -C others/script/ test
 - `symbols*`：控制 `v`/`V` 模式下的符号输入。
 - `weasel.yaml`：小狼毫前端配置（Windows；本地已移除，macOS 用 `squirrel.yaml`）。
 - `squirrel.yaml` / `squirrel.custom.yaml`：鼠须管前端配置与本地界面补丁（主题、字体等）。
-- `default.yaml`：全局默认配置，控制启用方案和通用行为。
+- `default.yaml`：全局默认配置（上游原样）；本地改动写 `default.custom.yaml`。
+- `default.custom.yaml`：方案列表、按键、`save_options` 等全局补丁。
+- `rime_ice.custom.yaml`：全拼方案的释义/Markdown/学习档位/快捷键补丁。
+- `melt_eng.custom.yaml`：独立英文方案的释义/快捷上屏补丁。
 - `custom_phrase.txt`：全拼自定义短语。
