@@ -47,17 +47,12 @@ switches:
   - name: search_single_char  # search.lua 的功能开关，辅码查词时是否单字优先
     states: [正常, 单字]
     abbrev: [词, 单]
-  - name: dict_comment        # 词典释义开关
-    states: [ 译关, 译开 ]
-    reset: 1
 
 
 # 输入引擎
 engine:
   processors:
     - lua_processor@*select_character  # 以词定字
-    - lua_processor@*dict_commit_processor  # 词典释义快捷上屏 (Ctrl+D / Ctrl+E / \ / Ctrl+Shift+Enter)
-    - lua_processor@*markdown_processor     # Markdown 成对符号光标自动居中
     - ascii_composer
     - recognizer
     - key_binder
@@ -69,8 +64,6 @@ engine:
   segmentors:
     - ascii_segmentor
     - matcher
-    - affix_segmentor@markdown_mD
-    - affix_segmentor@markdown_Md
     - abc_segmentor
     - affix_segmentor@radical_lookup  # 部件拆字自定义 tag
     - punct_segmentor
@@ -88,7 +81,6 @@ engine:
     - lua_translator@*unicode            # Unicode
     - lua_translator@*number_translator  # 数字、金额大写
     - lua_translator@*calc_translator    # 计算器
-    - lua_translator@*markdown_translator@markdown # Markdown 语法输入
     - lua_translator@*force_gc           # 暴力 GC
   filters:
     - lua_filter@*corrector                         # 错音错字提示
@@ -99,7 +91,6 @@ engine:
     - simplifier@emoji                              # Emoji
     - simplifier@traditionalize                     # 简繁切换
     - lua_filter@*search@radical_pinyin             # 部件拆字辅码
-    - lua_filter@*dict_comment_filter               # 中英双向词典释义
     - uniquifier                                    # 去重
 
 
@@ -306,30 +297,6 @@ radical_reverse_lookup:
   #  - xform/$/)/
 
 
-# 部件拆字辅码
-radical_pinyin:
-  tags: [ pinyin ]
-
-# abc 编码分段器附加 tag
-abc_segmentor:
-  extra_tags:
-    - pinyin
-
-
-# Markdown 语法输入设定
-markdown:
-  prefix: "^(Md|mD)"           # 触发前缀 (仅 Md 或 mD)
-  enable_auto_cursor: true     # 成对符号上屏后是否自动居中光标
-
-markdown_mD:
-  tag: markdown
-  prefix: "mD"
-
-markdown_Md:
-  tag: markdown
-  prefix: "Md"
-
-
 # 处理符合特定规则的输入码，如网址、反查
 
 recognizer:
@@ -341,19 +308,13 @@ recognizer:
     number: "^R[0-9]+[.]?[0-9]*"        # 脚本将自动获取第 2 个字符 R 作为触发前缀，响应 lua_translator@*number_translator，数字金额大写
     calculator: "^cC.+"                 # 响应 lua_translator@*calc_translator，计算器。前缀设定项 calculator/prefix
     gregorian_to_lunar: "^N[0-9]{1,8}"  # 响应 lua_translator@*lunar，公历转农历
-    markdown: "^(Md|mD)[^0-9,.]*$"
 
 
 # 从 default 继承快捷键
 key_binder:
   import_preset: default  # 从 default.yaml 继承通用的
   search: "`"             # 辅码引导符，要添加到 speller/alphabet
-  bindings:
-    - { when: always, accept: "Control+Shift+E", toggle: dict_comment }  # 快捷键开关词典释义
-    - { when: has_menu, accept: comma, send: Page_Up }                   # 逗号上一页
-    - { when: has_menu, accept: period, send: Page_Down }                 # 句号下一页
-    - { when: has_menu, accept: minus, send: Page_Up }                    # 减号上一页
-    - { when: has_menu, accept: equal, send: Page_Down }                  # 等号下一页
+  # bindings:             # 也可以再增加方案专有的
 
 
 # editor 用来定制操作键的行为，以下是默认行为 https://github.com/rime/librime/blob/master/src/rime/gear/editor.cc

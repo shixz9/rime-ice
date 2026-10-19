@@ -41,16 +41,10 @@ F_SCHEMA_SRC = RIME_DIR / "rime_ice.schema.yaml" # 上游方案（processors/swi
 
 WRITABLE = [F_DEFAULT, F_SQUIRREL, F_SCHEMA, F_DICT]
 
-# 面板可管的方案（顺序即 schema_list 顺序；t9 已被上游删除，见 default.custom.yaml 注释）
+# 面板可管的方案（顺序即 schema_list 顺序）
+# 本地只启用全拼；双拼方案文件保留上游原样，但不加入 schema_list，避免误切换。
 SCHEMAS = [
-    ("rime_ice",              "雾凇拼音（全拼）"),
-    ("double_pinyin",         "自然码双拼"),
-    ("double_pinyin_abc",     "智能 ABC 双拼"),
-    ("double_pinyin_mspy",    "微软双拼"),
-    ("double_pinyin_sogou",   "搜狗双拼"),
-    ("double_pinyin_flypy",   "小鹤双拼"),
-    ("double_pinyin_ziguang", "紫光双拼"),
-    ("double_pinyin_jiajia",  "拼音加加双拼"),
+    ("rime_ice", "雾凇拼音（全拼）"),
 ]
 # key_binder 分组：每组对应 default.yaml 中「一段」生效绑定，可整组开关
 KEY_GROUPS = [
@@ -254,7 +248,7 @@ def gen_default_custom(m):
     L.append("# 注意：不要直接改 default.yaml —— 那是上游仓库文件，git pull 会被覆盖；一律写在这里")
     L.append("# 上游校验：ruby others/script/check_custom_patch.rb")
     L.append("patch:")
-    L.append("  # 方案列表：Rime 对列表为整体替换，须完整重列；t9 已随其方案文件删除而去除")
+    L.append("  # 方案列表：Rime 对列表为整体替换；本地只启用全拼，双拼文件保留但不挂载")
     L.append("  schema_list:")
     for sid, _ in SCHEMAS:
         mark = "" if sid in m["schemas_on"] else "    # 已停用"

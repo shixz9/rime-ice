@@ -3,16 +3,10 @@
 # 注意：不要直接改 default.yaml —— 那是上游仓库文件，git pull 会被覆盖；一律写在这里
 # 上游校验：ruby others/script/check_custom_patch.rb
 patch:
-  # 方案列表：Rime 对列表为整体替换，须完整重列；t9 已随其方案文件删除而去除
+  # 方案列表：Rime 对列表为整体替换；本地只启用全拼。
+  # 双拼方案文件保留上游原样，但不加入 schema_list、不挂载释义/Markdown。
   schema_list:
     - schema: rime_ice
-    - schema: double_pinyin
-    - schema: double_pinyin_abc
-    - schema: double_pinyin_mspy
-    - schema: double_pinyin_sogou
-    - schema: double_pinyin_flypy
-    - schema: double_pinyin_ziguang
-    - schema: double_pinyin_jiajia
 
   menu:
     page_size: 9        # 每页候选词数量

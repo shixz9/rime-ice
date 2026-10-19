@@ -2,7 +2,9 @@
 
 ## 🎯 实现成果概览
 
-为雾凇拼音及鼠须管（Squirrel）输入法完整实现中英双向释义与注释显示功能：
+为雾凇拼音及鼠须管（Squirrel）输入法完整实现中英双向释义与注释显示功能。
+
+> 本地只启用全拼（`rime_ice`）；7 个双拼方案保留上游原样，不加入 `schema_list`，也不挂载释义/Markdown。
 
 1. **中译英**：输入中文（单字/词组）时，候选词旁以注释形式展示 CC-CEDICT 英文释义。
 2. **英译中**：输入英文单词时，候选词旁以注释形式展示 ECDICT 中文简明释义。
@@ -46,7 +48,7 @@ others/qingjian_glossary_en.tsv，232,213 词）。
 | [`others/script/rime_cursor.rs`](./others/script/rime_cursor.rs) | **新建** | 原生 Windows 光标定位轻量级动态链接库 C/Rust 源码 |
 | [`others/script/rime_cursor.dll`](./others/script/rime_cursor.dll) | **新建** | 编译后的原生光标控制 DLL 模块，无弹窗、零延迟微调输入光标 |
 | [`rime_ice.schema.yaml`](./rime_ice.schema.yaml) | **修改** | 挂载双向词典释义、词典快捷上屏与 Markdown 语法输入/光标定位插件 |
-| `double_pinyin*.schema.yaml` | **修改** | 全系双拼方案（自然码、小鹤、微软、搜狗、ABC、加加、紫光）同步挂载词典释义与 Markdown 语法输入 |
+| `double_pinyin*.schema.yaml` | **上游原样** | 本地不启用双拼；文件保留，但不挂载释义/Markdown，也不在 schema_list 中 |
 | [`melt_eng.schema.yaml`](./melt_eng.schema.yaml) | **修改** | 独立英文输入方案同步挂载 `dict_comment_filter` |
 | [`squirrel.custom.yaml`](./squirrel.custom.yaml) | **修改** | 主题（native 跟随系统）、候选字体/字号、圆角、内嵌编码 |
 
