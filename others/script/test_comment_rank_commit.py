@@ -5,7 +5,8 @@ comment_rank_commit.lua 的运行时单测（不依赖 Rime/Squirrel，用 lupa 
 
 验证内容：
 1. Ctrl+E/R/T 分别上屏第 1/2/3 个英文译词
-2. 注释不足 N 段时按键放行（kNoop），不吞键
+2. 注释不足 N 段时：Ctrl+R/T 吞键（kAccepted，避免穿透宿主应用），
+   Ctrl+E 的单条注释仍放行给 editor/commit_comment
 3. 候选无注释时吞键（kAccepted，不输出）
 4. 非目标按键 / 释放事件 / 未合成 / 无菜单 均放行
 5. 尾部省略号与首尾空白的清理
@@ -69,9 +70,10 @@ emit("T-第3段", run("Control+t", "hello; hi; hey"))
 emit("E-大写repr", run("Control+E", "hello; hi; hey"))
 emit("T-大写repr", run("Control+T", "hello; hi; hey"))
 -- 段数不足：T 放行，E 仍可上屏
-emit("T-仅2段放行", run("Control+t", "hello; hi"))
+emit("T-仅2段吞键", run("Control+t", "hello; hi"))
 emit("R-仅2段可上屏", run("Control+r", "hello; hi"))
 emit("E-单段无分号放行", run("Control+e", "hello"))
+emit("R-单段无分号吞键", run("Control+r", "hello"))
 -- 无注释：吞键不输出
 emit("E-无注释吞键", run("Control+e", ""))
 emit("T-无注释吞键", run("Control+t", ""))
@@ -115,9 +117,10 @@ def main():
         "T-第3段":       (1, "hey"),
         "E-大写repr":    (1, "hello"),
         "T-大写repr":    (1, "hey"),
-        "T-仅2段放行":   (2, ""),
+        "T-仅2段吞键":   (1, ""),
         "R-仅2段可上屏": (1, "hi"),
         "E-单段无分号放行": (2, ""),
+        "R-单段无分号吞键": (1, ""),
         "E-无注释吞键":  (1, ""),
         "T-无注释吞键":  (1, ""),
         "普通键放行":    (2, ""),

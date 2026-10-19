@@ -175,7 +175,7 @@ pin_cand_filter:
 dict_comment_filter:
   enable_chinese_to_english: true   # 是否开启中译英释义（基于 CC-CEDICT）
   enable_english_to_chinese: true   # 是否开启英译中释义（基于 ECDICT）
-  max_defs: 2                       # 释义显示项数（按项截断，超出显示省略号“…”）
+  max_defs: 3                       # 释义显示项数（按项截断，超出显示省略号“…”）；与 Ctrl+T 第 3 个译词一致
   max_length: 45                    # 释义最大字符数安全兜底
 
 

@@ -4,6 +4,10 @@
 --   1. 在 M.func 中拦截 Markdown 状态下的符号输入，阻止 punctuator 干扰
 --   2. 通过轻量级原生模块 rime_cursor.dll (package.loadlib) 在内存中异步微调光标
 --   3. 零子进程、零 cmd 弹窗、零轮询守护、零卡顿！
+--
+-- 平台限制：自动居中依赖 Windows 的 rime_cursor.dll；macOS/Linux 没有对应
+-- 原生模块，因此会显式关闭该功能。Markdown 模板本身仍正常上屏，只是光标
+-- 停在成对符号右侧，不会自动回到中间。
 
 local M = {}
 
@@ -102,8 +106,17 @@ function M.init(env)
     env.enable_auto_cursor = config:get_bool(ns .. "/enable_auto_cursor")
     if env.enable_auto_cursor == nil then env.enable_auto_cursor = true end
 
-    -- 预热加载原生模块
-    get_cursor_mod()
+    -- rime_cursor 只有 Windows 原生模块；其他平台没有实现，
+    -- 显式关闭自动居中，避免“看起来启用、实际静默失败”。
+    local is_windows = package.config:sub(1, 1) == "\\"
+    if not is_windows then
+        env.enable_auto_cursor = false
+    end
+
+    -- 预热加载原生模块（仅 Windows 且启用时）
+    if env.enable_auto_cursor then
+        get_cursor_mod()
+    end
 
     -- commit_notifier 监听所有上屏事件
     env.commit_notifier = env.engine.context.commit_notifier:connect(function(ctx)

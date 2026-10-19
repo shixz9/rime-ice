@@ -3,21 +3,25 @@
 
 功能：
 在输入拼音或英文时，挑选并选中候选词后：
-按下快捷键（推荐：Ctrl+D、Ctrl+E 或反斜杠 "\"）：
+按下快捷键（推荐：Ctrl+D 或反斜杠 "\"）：
 将「当前高亮候选词 + 完整词典释义」一同上屏。
 
 快捷键设计说明：
 - 避免使用 Alt 系列组合键（Windows 系统底层会将 Alt+Enter 拦截用于“文件属性”或系统菜单）
 - 默认支持：
   1. Ctrl + D  (Dict 词典，推荐，单手操作最舒适)
-  2. Ctrl + E  (Explain / English 释义)
-  3. \         (反斜杠键，无需按 Ctrl，选词时一键输出完整释义)
-  4. Ctrl + Shift + Return (回车组合键)
+  2. \         (反斜杠键，无需按 Ctrl，选词时一键输出完整释义)
+  3. Ctrl + Shift + Return (回车组合键)
 - 支持在 schema 或 custom.yaml 中通过 `key_binder/dict_commit` 自定义任意按键。
+- Ctrl+E / Ctrl+R / Ctrl+T 由 comment_rank_commit.lua 负责，本处理器不再拦截 Ctrl+E。
 
 示例：
 - 选中「你好」按 Ctrl+D -> 上屏「你好 (hello; hi; how are you)」
-- 选中「apple」按 Ctrl+D -> 上屏「apple (n. 苹果, 苹果树)」
+- 选中「apple」按 Ctrl+D -> 上屏「apple (苹果)」
+
+注意：OpenCC 原始值里的学习元数据（音标/星级/◆/考试标签/BNC/FRQ，
+以 ¤ 分隔）只用于候选注释，上屏前必须清洗掉；词性标注（n. / int. …）
+也一并去除，保持「单词 + 纯释义」的可读格式。
 --]]
 
 local M = {}
@@ -40,7 +44,8 @@ end
 
 local function is_english(s)
     if not s or s == "" then return false end
-    return s:match("^[%a%-%'%s%.%d]+$") ~= nil
+    -- 显式 ASCII 空白类：避免 Lua 5.5 / lupa 把 UTF-8 尾字节 0xA0 当空白
+    return s:match("^[%a%-%' \t\n\v\f\r%.%d]+$") ~= nil
 end
 
 local function lookup(opencc_obj, key)
@@ -58,6 +63,80 @@ local function lookup(opencc_obj, key)
         end
     end
     return nil
+end
+
+-- ── 释义清洗 ────────────────────────────────────────────────────────────
+-- 词性表与 dict_comment_filter.lua 保持一致；改动时请同步两处。
+local POS_TAGS = {
+    "int", "n", "v", "vt", "vi", "adj", "adv", "prep", "conj", "pron",
+    "aux", "num", "art", "abbr", "phr", "sl", "fig", "lit", "derog",
+    "colloq", "formal", "informal", "TCM", "Budd", "obs", "hum", "rare"
+}
+
+local function trim_ws(s)
+    if not s then return s end
+    s = s:gsub("^[ \t\n\v\f\r]+", "")
+    s = s:gsub("[ \t\n\v\f\r]+$", "")
+    return s
+end
+
+local function strip_pos(s)
+    local changed = true
+    while changed do
+        changed = false
+        for _, tag in ipairs(POS_TAGS) do
+            local stripped = s:gsub("^" .. tag .. "%.[ \t\n\v\f\r]*", "")
+            if stripped ~= s then
+                s = stripped
+                changed = true
+            end
+        end
+    end
+    return s
+end
+
+-- 去掉 ¤ 及其后的学习元数据（U+00A4 的 UTF-8 字节为 \194\164）
+local function strip_meta(s)
+    local idx = s:find("\194\164", 1, true)
+    if idx then return s:sub(1, idx - 1) end
+    return s
+end
+
+-- 把原始词典值清洗成「纯释义1; 纯释义2; …」：
+--   1. NBSP 还原为普通空格；
+--   2. 英译中（e2c）的元数据整块位于值末尾，先整体截掉再分号切分；
+--      中译英（c2e）的元数据逐项挂在每个译词后，切分后逐项截掉；
+--   3. 去掉词性、修剪空白；
+--   4. 不按 max_defs 截断——Ctrl+D 的语义是“完整释义”。
+local function clean_definition(def_str, meta_per_item)
+    if not def_str or def_str == "" then return "" end
+
+    local normalized = def_str:gsub("\194\160", " ")
+    if not meta_per_item then
+        -- e2c：head¤音标¤星级¤牛津¤标签¤BNC¤FRQ，整块元数据在末尾
+        normalized = strip_meta(normalized)
+    end
+    normalized = normalized:gsub("；", ";")
+    normalized = normalized:gsub("，", ";")
+    normalized = normalized:gsub("、", ";")
+    normalized = normalized:gsub(",", ";")
+
+    local items = {}
+    for raw in normalized:gmatch("([^;]+)") do
+        local item = raw
+        if meta_per_item then
+            -- c2e：each¤meta; each¤meta
+            item = strip_meta(item)
+        end
+        item = trim_ws(item)
+        item = strip_pos(item)
+        item = trim_ws(item)
+        if item ~= "" then
+            items[#items + 1] = item
+        end
+    end
+
+    return table.concat(items, "; ")
 end
 
 function M.init(env)
@@ -86,24 +165,22 @@ function M.func(key, env)
         if is_match then
             init_dicts()
             local cand = context:get_selected_candidate()
-            local text = cand and cand.text or context.input
+            local text = trim_ws(cand and cand.text or context.input)
 
             if text and text ~= "" then
                 local full_def = nil
+                local meta_per_item = true
                 if is_english(text) and global_ecdict then
-                    local lower = text:lower():gsub("^%s+", ""):gsub("%s+$", "")
+                    local lower = text:lower()
                     full_def = lookup(global_ecdict, lower) or lookup(global_ecdict, text)
+                    meta_per_item = false
                 elseif global_cedict then
-                    local clean = text:gsub("^%s+", ""):gsub("%s+$", "")
-                    full_def = lookup(global_cedict, clean)
+                    full_def = lookup(global_cedict, text)
                 end
 
-                if full_def and full_def ~= "" then
-                    -- 还原不换行空格为正常空格
-                    full_def = full_def:gsub("\194\160", " ")
-                    -- 去除首尾多余分隔符
-                    full_def = full_def:gsub("^[;%s]+", ""):gsub("[;%s]+$", "")
-                    engine:commit_text(text .. " (" .. full_def .. ")")
+                local cleaned = clean_definition(full_def, meta_per_item)
+                if cleaned ~= "" then
+                    engine:commit_text(text .. " (" .. cleaned .. ")")
                 else
                     engine:commit_text(text)
                 end
