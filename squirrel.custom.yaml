@@ -3,7 +3,8 @@
 # 改完在菜单栏鼠须管图标 →「重新部署」生效（面板上可直接点）
 patch:
   style:
-    color_scheme: "system"                     # 主题
+    color_scheme: "native"                     # 主题（native = 跟随系统；Squirrel 不认 system）
+    color_scheme_dark: "native"                # 暗色主题（同样跟随系统）
     candidate_list_layout: "stacked"        # 候选词竖排（linear 为横排）
     text_orientation: horizontal
     font_face: "FZZhunYuan-M02"               # 候选字体

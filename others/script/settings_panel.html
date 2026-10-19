@@ -668,7 +668,7 @@ function renderStyle(m){
     markDirty();
   };
   $('[data-step="label_font_point"]').style.opacity = st.label_font ? 1 : .4;
-  const schemeState = st.color_scheme === "system" ? "system" : "custom";
+  const schemeState = (st.color_scheme === "system" || st.color_scheme === "native") ? "system" : "custom";
   segmented($("#seg-scheme"), schemeState);
   $("#color-scheme").value = schemeState==="system" ? "purity_of_form_custom" : st.color_scheme;
   $("#color-scheme").style.display = schemeState==="custom" ? "" : "none";
@@ -780,7 +780,8 @@ async function save(thenDeploy){
   }
   S.dirty = false;
   $("#btn-save").textContent = "保存";
-  log(`已保存 ${r.files.length} 个文件（备份 ${r.backup}）`);
+  const savedN = Array.isArray(r.written) ? r.written.length : r.files.length;
+  log(savedN ? `已保存 ${savedN} 个文件（备份 ${r.backup}）` : `配置无变化，未写入文件（备份 ${r.backup}）`);
   $("#foot-info").textContent = "已保存";
   if(thenDeploy) return deploy();
   toast("已保存。重新部署后生效");

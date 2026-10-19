@@ -153,7 +153,8 @@ def build_state():
             "label_font_point":eff_sty.get("label_font_point", 20),
             "corner_radius":   eff_sty.get("corner_radius", 7),
             "inline_preedit":  bool(eff_sty.get("inline_preedit", True)),
-            "color_scheme":    eff_sty.get("color_scheme", "purity_of_form_custom"),
+            "color_scheme":    ("system" if eff_sty.get("color_scheme") == "native"
+                                else eff_sty.get("color_scheme", "purity_of_form_custom")),
         },
         "ctrl_e":       ctrl_e_state(e_custom),
         "rank_commit":  any(p == "lua_processor@*comment_rank_commit"
@@ -311,13 +312,18 @@ def gen_default_custom(m):
 
 def gen_squirrel_custom(m):
     st = m["style"]
+    scheme = st.get("color_scheme") or "system"
+    # Squirrel 的系统主题名是 native；system 只是面板内部的 UI 值。
+    if scheme in ("system", "native"):
+        scheme = "native"
     L = []
     L.append("# 鼠须管界面设置（自定义补丁，优先级高于 squirrel.yaml）")
     L.append("# 由「Rime 设置面板」生成于 %s；手动修改会被下次面板保存覆盖" % datetime.now().strftime("%Y-%m-%d %H:%M"))
     L.append("# 改完在菜单栏鼠须管图标 →「重新部署」生效（面板上可直接点）")
     L.append("patch:")
     L.append("  style:")
-    L.append("    color_scheme: %-28s # 主题" % _y(st.get("color_scheme", "system")))
+    L.append("    color_scheme: %-28s # 主题（跟随系统用 native）" % _y(scheme))
+    L.append("    color_scheme_dark: %-23s # 暗色主题（与亮色同方案）" % _y(scheme))
     L.append("    candidate_list_layout: %-16s # 候选词竖排（linear 为横排）" %
              _y(st.get("layout", "stacked")))
     L.append("    text_orientation: horizontal")
@@ -390,10 +396,16 @@ def gen_rime_ice_custom(m, upstream_processors, upstream_bindings=None, upstream
     return "\n".join(L)
 
 def patch_rime_ice_dict(m):
-    """外科手术式改写 import_tables 段（其余内容原样保留），词库变更时 bump version。"""
+    """外科手术式改写 import_tables 段。
+
+    两个约束：
+    1. 只有 import_tables 真的变化时才 bump version；否则原样返回，
+       避免改字体/快捷键也触发 97MB 主词库重建。
+    2. 面板不认识的 import 行（例如手写的 cn_dicts/mydict1）原样保留，
+       不能被面板保存静默删掉。
+    """
     text = F_DICT.read_text(encoding="utf-8")
     on = set(m.get("dicts_on") or [])
-    lines = ["import_tables:"]
     comments = {
         "8105": "字表", "41448": "大字表（按需启用）（启用时和 8105 同时启用并放在 8105 下面）",
         "base": "基础词库", "ext": "扩展词库",
@@ -402,9 +414,37 @@ def patch_rime_ice_dict(m):
         "poetry.tang": "全唐诗 + 补录（权重 5）", "poetry.songci": "全宋词（权重 5）",
     }
     order = [i for i, _, _ in DICT_TABLES]
+    known = set(order)
+
+    block_re = re.compile(r"import_tables:\n(?:[ \t]+.*\n|\n)*")
+    match = block_re.search(text)
+    if not match:
+        raise RuntimeError("未找到 import_tables 段，拒绝写入")
+    old_block = match.group(0)
+
+    # 保留面板未识别的条目（手写词库、第三方词库等），按原行保留注释
+    preserved = []
+    seen = set()
+    for line in old_block.splitlines()[1:]:
+        em = re.match(r"\s*-\s+(\S+)(.*)$", line)
+        if not em:
+            continue
+        path = em.group(1)
+        tid = path[len("cn_dicts/"):] if path.startswith("cn_dicts/") else path
+        if tid in known:
+            continue
+        if path in seen:
+            continue
+        seen.add(path)
+        preserved.append(line.rstrip())
+
+    lines = ["import_tables:"]
     for tid in order:
         if tid in on:
             lines.append("  - cn_dicts/%s%s" % (tid, ("  # " + comments[tid]) if tid in comments else ""))
+    if preserved:
+        lines += ["", "  # 面板未识别的自定义词库，原样保留"]
+        lines += preserved
     lines += [
         "",
         "  # 建议把扩展词库放到下面，有重复词条时，最上面的权重生效",
@@ -413,9 +453,12 @@ def patch_rime_ice_dict(m):
         "",
     ]
     new_block = "\n".join(lines)
-    text2, n = re.subn(r"import_tables:\n(?:[ \t]+.*\n|\n)*", lambda _: new_block, text, count=1)
-    if n != 1:
-        raise RuntimeError("未找到 import_tables 段，拒绝写入")
+
+    # 没有实际变化：连 version 都不动，避免无谓的词典重建
+    if new_block == old_block:
+        return text
+
+    text2 = text[:match.start()] + new_block + text[match.end():]
     today = datetime.now().strftime("%Y-%m-%d")
     text2 = re.sub(r'version: "[^"]*"', 'version: "%s"' % today, text2, count=1)
     return text2
@@ -508,17 +551,24 @@ class Handler(BaseHTTPRequestHandler):
                 schema_src.get("switches") or []),
             F_DICT:      patch_rime_ice_dict(m),
         }
-        # 写文件（先备份，再原子替换）
+        # 写文件（先备份，再原子替换；内容未变的文件不重写，避免无谓 mtime 变化）
         ts = datetime.now().strftime("%Y%m%d-%H%M%S")
         bdir = BACKUP_DIR / ts
         bdir.mkdir(parents=True, exist_ok=True)
         for p in WRITABLE:
             shutil.copy2(p, bdir / p.name)
+        written = []
         for p, text in new_files.items():
+            try:
+                if p.read_text(encoding="utf-8") == text:
+                    continue
+            except OSError:
+                pass
             fd, tmp = tempfile.mkstemp(dir=str(p.parent), prefix=".panel_", suffix=".tmp")
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 f.write(text)
             os.replace(tmp, p)
+            written.append(p.name)
         # 自校验：重新读取生成后的配置
         try:
             st1 = build_state()
@@ -532,7 +582,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": False, "errors": errs, "rolled_back": True,
                                "backup": ts})
         self._json({"ok": True, "backup": ts,
-                    "files": [p.name for p in new_files]})
+                    "files": [p.name for p in new_files],
+                    "written": written})
 
     @staticmethod
     def _verify(st, m):
