@@ -7,8 +7,8 @@
 -- 英文候选的中文注释用全角「；」，不会进入此分支，按键放行给编辑器原逻辑。
 -- 候选无注释时吞键（不输出），避免回落 commit_comment 上屏空字符串。
 -- 译词不足时：Ctrl+R/T 吞键，避免按键穿透到宿主应用（浏览器刷新/新标签页）；
--- Ctrl+E 的单条注释：带 /音标/ 且为纯英文词时直接上屏（去掉音标/元数据）；
--- 中文释义、无音标或非英文内容仍放行给 editor/commit_comment。
+-- Ctrl+E 的单条注释：带 /音标/ 时直接上屏第一个清洗后的词（中英释义均可）；
+-- 无音标时仍放行给 editor/commit_comment。
 -- 注释条数上限见 dict_comment_filter.lua 的 max_defs（默认 3 条）。
 --
 -- 注释中每个译词可能带学习元数据尾巴（音标 /.../、◆、★、考试标签、
@@ -46,16 +46,6 @@ local function has_meta(s)
         or s:find("FRQ", 1, true) ~= nil
 end
 
--- 单条注释只有“纯 ASCII 英文词”才适合由 Ctrl+E 直接上屏；
--- 英文候选的中文释义（如「链 /tʃein/」）不是英文译词，应交给编辑器处理。
-local function is_ascii_english(s)
-    if not s or s == "" then return false end
-    for i = 1, #s do
-        if s:byte(i) > 127 then return false end
-    end
-    return s:match("%a") ~= nil
-end
-
 function M.func(key, env)
     if key:release() then return kNoop end
     local repr = key:repr()
@@ -81,22 +71,21 @@ function M.func(key, env)
     -- 候选无注释：吞键，避免回落 commit_comment 上屏空字符串
     if comment == "" then return kAccepted end
 
+    -- ⋯ 表示最后一个词条被长度截断；被截断的末项不能上屏
+    local truncated = comment:find("⋯", 1, true) ~= nil
+
     -- 中译英注释以 ASCII "; " 拼接；无分号（单词数不足）时：
     --   Ctrl+E + 带音标 → 直接上屏第 1 个词（剥掉 /音标/ 与元数据）
     --   Ctrl+E + 无音标 → 交给编辑器 commit_comment（上屏整条注释）
     --   Ctrl+R/T       → 没有第 2/3 项可上屏，吞键避免穿透到宿主应用
     if not comment:find(";") then
+        if truncated then return kAccepted end
         if idx == 1 and has_meta(comment) then
             local item = strip_meta(comment)
             item = item:gsub("^[ \t\n\v\f\r]+", ""):gsub("[ \t\n\v\f\r]+$", "")
             if item ~= "" then
-                if is_ascii_english(item) then
-                    env.engine:commit_text(item)
-                    ctx:clear()
-                    return kAccepted
-                end
-                -- 非英文单条（如英文候选的中文释义）：交给编辑器
-                if idx == 1 then return kNoop end
+                env.engine:commit_text(item)
+                ctx:clear()
                 return kAccepted
             end
             return kAccepted
@@ -111,11 +100,13 @@ function M.func(key, env)
     for raw_item in comment:gmatch("([^;]+)") do
         local item = raw_item
         item = item:gsub("^[ \t\n\v\f\r]+", ""):gsub("[ \t\n\v\f\r]+$", "")
-        item = item:gsub("…[ \t\n\v\f\r]*$", ""):gsub("[ \t\n\v\f\r]+$", "")
+        item = item:gsub("…[ \t\n\v\f\r]*$", ""):gsub("⋯[ \t\n\v\f\r]*$", ""):gsub("[ \t\n\v\f\r]+$", "")
         if item ~= "" then
             table.insert(items, strip_meta(item))
         end
     end
+    -- 被长度截断的末项不上屏
+    if truncated and idx == #items then return kAccepted end
     -- 译词不足：吞键，避免 Ctrl+R/T 落到宿主应用
     if #items < idx then return kAccepted end
 

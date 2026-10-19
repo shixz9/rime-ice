@@ -228,9 +228,11 @@ local function format_c2e(def_str, max_defs, max_length, level)
 
     local truncated
     result, truncated = apply_length_guard(result, max_length)
-    if truncated then has_more = true end
-
-    if has_more then
+    if truncated then
+        -- ⋯ 表示“最后一个词条被长度截断”，与“还有更多释义”的 … 区分；
+        -- comment_rank_commit 会拒绝上屏被截断的末项，避免打出半个词。
+        result = result .. "⋯"
+    elseif has_more then
         result = result .. "…"
     end
 

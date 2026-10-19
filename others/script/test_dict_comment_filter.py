@@ -113,6 +113,15 @@ do
     emit("c2e-多候选-完整", run({ text = "测试词" }, true, true, env))
 end
 
+-- 合成：第三项超长，长度截断应标记 ⋯
+do
+    local C = {}
+    for k, v in pairs(CEDICT) do C[k] = v end
+    C["长三"] = "n. alpha¤m1; vt. beta¤m2; adj. " .. string.rep("x", 80) .. "¤m3"
+    local env = make_env(false, false, nil, { convert_word = function(self, w) return C[w] end }, 60)
+    emit("c2e-第三项超长", run({ text = "长三" }, false, false, env))
+end
+
 return results
 """
 
@@ -151,7 +160,7 @@ def main():
 
     expected = {
         "c2e-中国-完整": "China /'tʃainә/ ★★ 中·高 BNC1973/7946",
-        "c2e-你好-完整": "hello /hә'lәu/ ◆ ★★★ 中·高 BNC2319/2238; hi /ha…",
+        "c2e-你好-完整": "hello /hә'lәu/ ◆ ★★★ 中·高 BNC2319/2238; hi /ha⋯",
         "c2e-你好-长注释": "hello /hә'lәu/ ◆ ★★★ 中·高 BNC2319/2238; hi /hai/ ◆ ★★★ 高 BNC6210/2072",
         "c2e-电脑-完整": "computer /kәm'pju:tә/ ◆ ★★★★ 中·高·雅 BNC580/589",
         "c2e-电脑-标准": "computer /kәm'pju:tә/",
@@ -182,6 +191,13 @@ def main():
         elif name == "e2c-maxdefs-截断":
             if got.startswith("一；二；三") and "…" in got and "四" not in got \
                     and "/p1/" in got:
+                print("  PASS %-22s %r" % (name, got))
+                ok += 1
+            else:
+                print("  FAIL %-22s got=%r" % (name, got))
+                bad += 1
+        elif name == "c2e-第三项超长":
+            if got.startswith("alpha; beta; xxx") and got.endswith("⋯") and "m3" not in got:
                 print("  PASS %-22s %r" % (name, got))
                 ok += 1
             else:
