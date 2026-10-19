@@ -14,6 +14,7 @@ user.yaml
 !default.custom.yaml
 !rime_ice.custom.yaml
 !squirrel.custom.yaml
+!melt_eng.custom.yaml
 
 # 方正准圆_GBK 为商业授权字体，不入库；重装环境时从系统字体恢复
 #（~/Library/Fonts 已安装，PostScript 名 FZZhunYuan-M02）

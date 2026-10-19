@@ -110,20 +110,27 @@ def load_dict(path, keys):
 
 
 def check_max_defs():
-    """配置契约：max_defs 必须 >= 3，否则 Ctrl+T 无第 3 个译词可上屏。"""
-    with open(SCHEMA, encoding="utf-8") as f:
-        schema = f.read()
-    m = re.search(r"^\s*max_defs:\s*(\d+)", schema, re.M)
-    if not m:
-        return ["rime_ice.schema.yaml 未找到 dict_comment_filter/max_defs"]
-    if int(m.group(1)) < 3:
-        return ["rime_ice.schema.yaml 的 max_defs=%s < 3，Ctrl+T 不可用" % m.group(1)]
-    if os.path.exists(CUSTOM):
-        with open(CUSTOM, encoding="utf-8") as f:
-            custom = f.read()
-        m2 = re.search(r"^\s*dict_comment_filter/max_defs:\s*(\d+)", custom, re.M)
-        if m2 and int(m2.group(1)) < 3:
-            return ["rime_ice.custom.yaml 把 max_defs 覆盖为 %s < 3" % m2.group(1)]
+    """配置契约：max_defs 必须 >= 3，否则 Ctrl+T 无第 3 个译词可上屏。
+
+    上游 schema 已不再直接修改，max_defs 由 rime_ice.custom.yaml 提供；
+    这里同时兼容 schema/custom 两种位置。
+    """
+    value = None
+    source = None
+    for path in (CUSTOM, SCHEMA):
+        if not os.path.exists(path):
+            continue
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        m = re.search(r"^\s*max_defs:\s*(\d+)", text, re.M)
+        if m:
+            value = int(m.group(1))
+            source = path
+            break
+    if value is None:
+        return ["rime_ice.schema/custom 均未找到 dict_comment_filter/max_defs"]
+    if value < 3:
+        return ["%s 的 max_defs=%s < 3，Ctrl+T 不可用" % (source, value)]
     return []
 
 

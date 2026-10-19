@@ -1,0 +1,25 @@
+# Easy English 方案级补丁（melt_eng.custom.yaml）
+# 上游 melt_eng.schema.yaml 保持原样；英文释义/快捷上屏通过本补丁挂载。
+patch:
+  # 上游只有 ascii_mode，追加释义主开关
+  switches/@1:
+    name: dict_comment
+    states: [ 译关, 译开 ]
+    reset: 1
+
+  engine/processors:
+    - lua_processor@*dict_commit_processor
+    - ascii_composer
+    - key_binder
+    - speller
+    - recognizer
+    - selector
+    - navigator
+    - express_editor
+
+  engine/filters:
+    - lua_filter@*dict_comment_filter
+    - uniquifier
+
+  key_binder/bindings:
+    - { when: always, accept: "Control+Shift+E", toggle: dict_comment }

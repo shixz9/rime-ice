@@ -1,9 +1,12 @@
 # 雾凇拼音方案级补丁（rime_ice.custom.yaml）
-# 由「Rime 设置面板」生成于 2026-10-17 15:37；手动修改会被下次面板保存覆盖
-# 方案文件的 custom 补丁：对本方案的 engine/editor 等做修改
+# 由「Rime 设置面板」生成于 2026-10-19 22:59；手动修改会被下次面板保存覆盖
+# 上游 rime_ice.schema.yaml 保持原样；以下为本地功能补丁
 patch:
-  # 英语学习元数据档位（详见 lua/dict_comment_filter.lua 头注释）
-  # 默认：标准档=英文单词+注音；完整档（◆/★/标签/词频）按需用 Ctrl+Shift+X 开
+  # 词典释义主开关 + 学习档位（追加在上游 switches 末尾）
+  switches/@6:
+    name: dict_comment
+    states: [ 译关, 译开 ]
+    reset: 1
   switches/@7:
     name: dict_comment_phonetic
     states: [ 无音标, 音标 ]
@@ -13,23 +16,41 @@ patch:
     states: [ 无考点, 考点详注 ]
     reset: 0
 
-  # 学习档位切换快捷键
-  key_binder/bindings/@5:
-    { when: always, accept: "Control+Shift+Y", toggle: dict_comment_phonetic }
-  key_binder/bindings/@6:
-    { when: always, accept: "Control+Shift+X", toggle: dict_comment_detail }
+  # 中英双向释义
+  dict_comment_filter:
+    enable_chinese_to_english: true
+    enable_english_to_chinese: true
+    max_defs: 3
+    max_length: 60
 
-  # 释义最大字符数：45 → 60，为学习元数据留空间（超出仍截断加 …）
-  dict_comment_filter/max_length: 60
+  # Markdown 语法输入
+  markdown:
+    prefix: "^(Md|mD)"
+    enable_auto_cursor: true
+  markdown_mD: { tag: markdown, prefix: mD }
+  markdown_Md: { tag: markdown, prefix: Md }
+  recognizer/patterns/markdown: "^(Md|mD)[^0-9,.]*$"
+  abc_segmentor/extra_tags: [ pinyin ]
+  search/tags: [ pinyin ]
+
+  # 快捷键（整表替换；翻页也在这里保留，避免依赖上游列表长度）
+  key_binder/bindings:
+    - { when: always, accept: "Control+Shift+E", toggle: dict_comment }
+    - { when: has_menu, accept: "comma", send: Page_Up }
+    - { when: has_menu, accept: "period", send: Page_Down }
+    - { when: has_menu, accept: "minus", send: Page_Up }
+    - { when: has_menu, accept: "equal", send: Page_Down }
+    - { when: always, accept: "Control+Shift+Y", toggle: dict_comment_phonetic }
+    - { when: always, accept: "Control+Shift+X", toggle: dict_comment_detail }
 
   # Ctrl+E：只上屏释义，不输出中文词
   "editor/bindings/Control+e": commit_comment
 
-  # 处理器链：列表是整体替换，以下为 rime_ice.schema.yaml 原列表 + 面板新增项
+  # 处理器链：列表是整体替换，以下为上游列表 + 本地新增项
   engine/processors:
     - lua_processor@*select_character
     - lua_processor@*dict_commit_processor
-    - lua_processor@*comment_rank_commit   # 新增：中文候选英文注释 Ctrl+E/R/T 按顺位上屏
+    - lua_processor@*comment_rank_commit
     - lua_processor@*markdown_processor
     - ascii_composer
     - recognizer
@@ -39,3 +60,46 @@ patch:
     - selector
     - navigator
     - express_editor
+
+  # 分段器：加入 Markdown 前缀
+  engine/segmentors:
+    - ascii_segmentor
+    - matcher
+    - affix_segmentor@markdown_mD
+    - affix_segmentor@markdown_Md
+    - abc_segmentor
+    - affix_segmentor@radical_lookup
+    - punct_segmentor
+    - fallback_segmentor
+
+  # 翻译器：加入 Markdown 语法翻译器
+  engine/translators:
+    - punct_translator
+    - script_translator
+    - lua_translator@*date_translator
+    - lua_translator@*lunar
+    - lua_translator@*uuid
+    - table_translator@custom_phrase
+    - table_translator@melt_eng
+    - table_translator@cn_en
+    - table_translator@radical_lookup
+    - lua_translator@*unicode
+    - lua_translator@*number_translator
+    - lua_translator@*calc_translator
+    - lua_translator@*markdown_translator@markdown
+    - lua_translator@*force_gc
+
+  # 过滤器：加入双向词典释义
+  engine/filters:
+    - lua_filter@*corrector
+    - reverse_lookup_filter@radical_reverse_lookup
+    - lua_filter@*autocap_filter
+    - lua_filter@*v_filter
+    - lua_filter@*pin_cand_filter
+    - lua_filter@*long_word_filter
+    - lua_filter@*reduce_english_filter
+    - simplifier@emoji
+    - simplifier@traditionalize
+    - lua_filter@*search@radical_pinyin
+    - lua_filter@*dict_comment_filter
+    - uniquifier

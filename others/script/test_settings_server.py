@@ -70,6 +70,54 @@ class PatchDictTests(unittest.TestCase):
         self.assertEqual(re.search(r'version: "([^"]*)"', out).group(1), today)
 
 
+class GeneratorTests(unittest.TestCase):
+    def setUp(self):
+        self.ss = load_server()
+        self.state = self.ss.build_state()
+        self.model = self.state["model"]
+        self.schema, _ = self.ss.read_json_file(self.ss.F_SCHEMA_SRC)
+        self.eng = self.schema.get("engine", {})
+
+    def gen_rime(self):
+        return self.ss.gen_rime_ice_custom(
+            self.model,
+            self.eng.get("processors"),
+            self.schema.get("key_binder", {}).get("bindings") or [],
+            self.schema.get("switches") or [],
+            self.eng.get("segmentors"),
+            self.eng.get("translators"),
+            self.eng.get("filters"),
+        )
+
+    def test_rime_custom_keeps_all_features(self):
+        out = self.gen_rime()
+        for needle in (
+            "switches/@6:", "name: dict_comment",
+            "switches/@7:", "dict_comment_phonetic",
+            "switches/@8:", "dict_comment_detail",
+            "max_defs: 3", "max_length: 60",
+            "lua_processor@*dict_commit_processor",
+            "lua_processor@*comment_rank_commit",
+            "lua_processor@*markdown_processor",
+            "affix_segmentor@markdown_mD",
+            "lua_translator@*markdown_translator@markdown",
+            "lua_filter@*dict_comment_filter",
+            'recognizer/patterns/markdown',
+            "Control+Shift+Y", "Control+Shift+X",
+        ):
+            self.assertIn(needle, out)
+
+    def test_default_custom_saves_dict_comment(self):
+        out = self.ss.gen_default_custom(self.model)
+        self.assertIn("save_options:", out)
+        self.assertIn("      - dict_comment", out)
+
+    def test_build_state_meta_has_local_switches(self):
+        names = [s.get("name") for s in self.state["switches"]]
+        self.assertIn("dict_comment", names)
+        self.assertIn("dict_comment_phonetic", names)
+        self.assertIn("dict_comment_detail", names)
+
 class ThemeTests(unittest.TestCase):
     def setUp(self):
         self.ss = load_server()

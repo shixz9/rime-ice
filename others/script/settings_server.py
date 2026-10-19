@@ -179,7 +179,13 @@ def build_state():
         "schemas": [{"id": i, "name": n} for i, n in SCHEMAS],
         "key_groups": [{"id": g, "name": n, "desc": d} for g, n, d in KEY_GROUPS],
         "dicts": [{"id": i, "name": n, "default_on": d} for i, n, d in DICT_TABLES],
-        "switches": schema_src.get("switches", []),
+        "switches": schema_src.get("switches", []) + [
+            {"name": "dict_comment", "states": ["译关", "译开"], "reset": 1},
+            {"name": "dict_comment_phonetic", "states": ["无音标", "音标"],
+             "reset": switch_state(e_custom, "dict_comment_phonetic", 1)},
+            {"name": "dict_comment_detail", "states": ["无考点", "考点详注"],
+             "reset": switch_state(e_custom, "dict_comment_detail", 0)},
+        ],
         "upstream_processors": schema_src.get("engine", {}).get("processors", []),
         "raw": {"default": d_raw, "squirrel": s_raw,
                 "schema": e_raw, "dict": dict_raw},
@@ -257,12 +263,17 @@ def gen_default_custom(m):
     L.append("  menu:")
     L.append("    page_size: %d        # 每页候选词数量" % int(m["page_size"]))
     L.append("")
+    L.append("  switcher:")
+    L.append("    # 释义开关跨会话记忆；上游 default.yaml 不再包含 dict_comment")
+    L.append("    save_options:")
+    for opt in ("ascii_punct", "traditionalization", "emoji", "full_shape",
+                "search_single_char", "dict_comment"):
+        L.append("      - %s" % opt)
     if m.get("switcher_hotkeys", True):
-        L.append("  switcher:")
         L.append("    hotkeys:")
         L.append('      - "Control+grave"   # Ctrl+` 切换输入方案')
         L.append('      - "F4"')
-        L.append("")
+    L.append("")
     L.append("  ascii_composer:")
     L.append("    good_old_caps_lock: %s   # Caps Lock 切换中英" %
              ("true" if m["ascii"].get("caps", True) else "false"))
@@ -333,41 +344,83 @@ def gen_squirrel_custom(m):
     L.append("")
     return "\n".join(L)
 
-def gen_rime_ice_custom(m, upstream_processors, upstream_bindings=None, upstream_switches=None):
+def _insert_after(seq, anchor, items):
+    """在列表 anchor 之后插入 items；找不到 anchor 时追加到末尾。"""
+    seq = list(seq)
+    try:
+        idx = seq.index(anchor) + 1
+    except ValueError:
+        return seq + list(items)
+    return seq[:idx] + list(items) + seq[idx:]
+
+def gen_rime_ice_custom(m, upstream_processors, upstream_bindings=None,
+                        upstream_switches=None, upstream_segmentors=None,
+                        upstream_translators=None, upstream_filters=None):
+    """生成 rime_ice.custom.yaml。
+
+    上游 rime_ice.schema.yaml 保持原样；释义、Markdown、快捷上屏、
+    学习档位和按键都通过 custom patch 挂载，避免 git pull 冲突。
+    """
     L = []
     L.append("# 雾凇拼音方案级补丁（rime_ice.custom.yaml）")
     L.append("# 由「Rime 设置面板」生成于 %s；手动修改会被下次面板保存覆盖" % datetime.now().strftime("%Y-%m-%d %H:%M"))
-    L.append("# 方案文件的 custom 补丁：对本方案的 engine/editor 等做修改")
+    L.append("# 上游 rime_ice.schema.yaml 保持原样；以下为本地功能补丁")
     L.append("patch:")
 
-    # 学习元数据档位开关（P1 富化的显示控制）
-    # 说明：librime 的 context:get_option 仅返回布尔值，多状态开关索引不可读，
-    # 故用两个布尔开关组合三档：均关=极简 / phonetic=标准(+音标◆) / detail=完整(+星级标签词频)。
-    # 追加索引基于上游列表当前长度；上游新增项后需顺延（check_custom_patch.rb 会校验）。
-    n_sw = len(upstream_switches) if upstream_switches else 7
-    L.append("  # 英语学习元数据档位（详见 lua/dict_comment_filter.lua 头注释）")
+    # 主开关 + 学习档位：上游 switches 目前 6 个，追加到末尾
+    sw = list(upstream_switches or [])
+    n_sw = len(sw) if sw else 6
+    L.append("  # 词典释义主开关 + 学习档位（追加在上游 switches 末尾）")
     L.append("  switches/@%d:" % n_sw)
+    L.append("    name: dict_comment")
+    L.append("    states: [ 译关, 译开 ]")
+    L.append("    reset: 1")
+    L.append("  switches/@%d:" % (n_sw + 1))
     L.append("    name: dict_comment_phonetic")
     L.append("    states: [ 无音标, 音标 ]")
     L.append("    reset: %d" % (1 if m.get("comment_phonetic", True) else 0))
-    L.append("  switches/@%d:" % (n_sw + 1))
+    L.append("  switches/@%d:" % (n_sw + 2))
     L.append("    name: dict_comment_detail")
     L.append("    states: [ 无考点, 考点详注 ]")
     L.append("    reset: %d" % (1 if m.get("comment_detail", False) else 0))
     L.append("")
 
-    # 档位切换快捷键（Y=音 yīn 标档，X=详 xiáng 注档；F4 方案菜单亦可切换）
-    n_bd = len(upstream_bindings) if upstream_bindings else 5
-    L.append("  # 学习档位切换快捷键")
-    L.append("  key_binder/bindings/@%d:" % n_bd)
-    L.append('    { when: always, accept: "Control+Shift+Y", toggle: dict_comment_phonetic }')
-    L.append("  key_binder/bindings/@%d:" % (n_bd + 1))
-    L.append('    { when: always, accept: "Control+Shift+X", toggle: dict_comment_detail }')
+    # 释义配置
+    L.append("  # 中英双向释义")
+    L.append("  dict_comment_filter:")
+    L.append("    enable_chinese_to_english: true")
+    L.append("    enable_english_to_chinese: true")
+    L.append("    max_defs: 3")
+    L.append("    max_length: 60")
     L.append("")
 
-    # 释义长度兜底 45→60：学习元数据（音标/星级/标签/词频）需要展示空间
-    L.append("  # 释义最大字符数：45 → 60，为学习元数据留空间（超出仍截断加 …）")
-    L.append("  dict_comment_filter/max_length: 60")
+    # Markdown 配置
+    L.append("  # Markdown 语法输入")
+    L.append("  markdown:")
+    L.append('    prefix: "^(Md|mD)"')
+    L.append("    enable_auto_cursor: true")
+    L.append("  markdown_mD: { tag: markdown, prefix: mD }")
+    L.append("  markdown_Md: { tag: markdown, prefix: Md }")
+    L.append('  recognizer/patterns/markdown: "^(Md|mD)[^0-9,.]*$"')
+    L.append("  abc_segmentor/extra_tags: [ pinyin ]")
+    L.append("  search/tags: [ pinyin ]")
+    L.append("")
+
+    # 快捷键：整表替换，保留翻页并加入释义开关
+    L.append("  # 快捷键（整表替换；翻页也在这里保留，避免依赖上游列表长度）")
+    L.append("  key_binder/bindings:")
+    bindings = [
+        ('Control+Shift+E', 'toggle: dict_comment'),
+        ('comma', 'send: Page_Up'),
+        ('period', 'send: Page_Down'),
+        ('minus', 'send: Page_Up'),
+        ('equal', 'send: Page_Down'),
+        ('Control+Shift+Y', 'toggle: dict_comment_phonetic'),
+        ('Control+Shift+X', 'toggle: dict_comment_detail'),
+    ]
+    for accept, tail in bindings:
+        when = "has_menu" if accept in ("comma", "period", "minus", "equal") else "always"
+        L.append('    - { when: %s, accept: "%s", %s }' % (when, accept, tail))
     L.append("")
 
     if m.get("ctrl_e", "off") != "off":
@@ -376,16 +429,64 @@ def gen_rime_ice_custom(m, upstream_processors, upstream_bindings=None, upstream
         L.append("  # Ctrl+E：%s" % action)
         L.append('  "editor/bindings/Control+e": %s' % m["ctrl_e"])
         L.append("")
-    L.append("  # 处理器链：列表是整体替换，以下为 rime_ice.schema.yaml 原列表 + 面板新增项")
+
+    # 处理器链
+    L.append("  # 处理器链：列表是整体替换，以下为上游列表 + 本地新增项")
     L.append("  engine/processors:")
-    procs = list(upstream_processors) or [
-        "lua_processor@*select_character", "lua_processor@*dict_commit_processor",
-        "lua_processor@*markdown_processor", "ascii_composer", "recognizer",
-        "key_binder", "speller", "punctuator", "selector", "navigator", "express_editor"]
+    procs = list(upstream_processors or [])
+    if not procs:
+        procs = ["lua_processor@*select_character", "ascii_composer", "recognizer",
+                 "key_binder", "speller", "punctuator", "selector", "navigator",
+                 "express_editor"]
+    inserts = ["lua_processor@*dict_commit_processor"]
+    if m.get("rank_commit"):
+        inserts.append("lua_processor@*comment_rank_commit")
+    inserts.append("lua_processor@*markdown_processor")
+    procs = _insert_after(procs, "lua_processor@*select_character", inserts)
     for p in procs:
         L.append("    - %s" % p)
-        if p.endswith("dict_commit_processor") and m.get("rank_commit"):
-            L.append("    - lua_processor@*comment_rank_commit   # 新增：中文候选英文注释 Ctrl+E/R/T 按顺位上屏")
+    L.append("")
+
+    # 分段器
+    L.append("  # 分段器：加入 Markdown 前缀")
+    L.append("  engine/segmentors:")
+    segs = list(upstream_segmentors or [])
+    if not segs:
+        segs = ["ascii_segmentor", "matcher", "abc_segmentor",
+                "affix_segmentor@radical_lookup", "punct_segmentor", "fallback_segmentor"]
+    segs = _insert_after(segs, "matcher", ["affix_segmentor@markdown_mD",
+                                           "affix_segmentor@markdown_Md"])
+    for x in segs:
+        L.append("    - %s" % x)
+    L.append("")
+
+    # 翻译器
+    L.append("  # 翻译器：加入 Markdown 语法翻译器")
+    L.append("  engine/translators:")
+    trs = list(upstream_translators or [])
+    if not trs:
+        trs = ["punct_translator", "script_translator"]
+    trs = _insert_after(trs, "lua_translator@*calc_translator",
+                        ["lua_translator@*markdown_translator@markdown"])
+    for x in trs:
+        L.append("    - %s" % x)
+    L.append("")
+
+    # 过滤器
+    L.append("  # 过滤器：加入双向词典释义")
+    L.append("  engine/filters:")
+    fls = list(upstream_filters or [])
+    if not fls:
+        fls = ["lua_filter@*corrector", "reverse_lookup_filter@radical_reverse_lookup",
+               "lua_filter@*autocap_filter", "lua_filter@*v_filter",
+               "lua_filter@*pin_cand_filter", "lua_filter@*long_word_filter",
+               "lua_filter@*reduce_english_filter", "simplifier@emoji",
+               "simplifier@traditionalize", "lua_filter@*search@radical_pinyin",
+               "uniquifier"]
+    fls = _insert_after(fls, "lua_filter@*search@radical_pinyin",
+                        ["lua_filter@*dict_comment_filter"])
+    for x in fls:
+        L.append("    - %s" % x)
     L.append("")
     return "\n".join(L)
 
@@ -542,7 +643,10 @@ class Handler(BaseHTTPRequestHandler):
                 m,
                 schema_src.get("engine", {}).get("processors"),
                 schema_src.get("key_binder", {}).get("bindings") or [],
-                schema_src.get("switches") or []),
+                schema_src.get("switches") or [],
+                schema_src.get("engine", {}).get("segmentors"),
+                schema_src.get("engine", {}).get("translators"),
+                schema_src.get("engine", {}).get("filters")),
             F_DICT:      patch_rime_ice_dict(m),
         }
         # 写文件（先备份，再原子替换；内容未变的文件不重写，避免无谓 mtime 变化）

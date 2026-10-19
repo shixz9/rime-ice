@@ -1,10 +1,9 @@
 # 输入行为设置（自定义补丁）
-# 由「Rime 设置面板」生成于 2026-10-17 15:37；手动修改会被下次面板保存覆盖
+# 由「Rime 设置面板」生成于 2026-10-19 22:59；手动修改会被下次面板保存覆盖
 # 注意：不要直接改 default.yaml —— 那是上游仓库文件，git pull 会被覆盖；一律写在这里
 # 上游校验：ruby others/script/check_custom_patch.rb
 patch:
-  # 方案列表：Rime 对列表为整体替换；本地只启用全拼。
-  # 双拼方案文件保留上游原样，但不加入 schema_list、不挂载释义/Markdown。
+  # 方案列表：Rime 对列表为整体替换；本地只启用全拼，双拼文件保留但不挂载
   schema_list:
     - schema: rime_ice
 
@@ -12,6 +11,14 @@ patch:
     page_size: 9        # 每页候选词数量
 
   switcher:
+    # 释义开关跨会话记忆；上游 default.yaml 不再包含 dict_comment
+    save_options:
+      - ascii_punct
+      - traditionalization
+      - emoji
+      - full_shape
+      - search_single_char
+      - dict_comment
     hotkeys:
       - "Control+grave"   # Ctrl+` 切换输入方案
       - "F4"

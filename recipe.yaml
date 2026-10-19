@@ -12,13 +12,17 @@ install_files: >-
   build/.gitkeep
   lua/cold_word_drop/*.*
   default.yaml
+  default.custom.yaml
   squirrel.yaml
+  squirrel.custom.yaml
   rime_ice.schema.yaml
+  rime_ice.custom.yaml
   rime_ice.dict.yaml
   symbols_v.yaml
   symbols_caps_v.yaml
   radical_pinyin.schema.yaml
   radical_pinyin.dict.yaml
   melt_eng.schema.yaml
+  melt_eng.custom.yaml
   melt_eng.dict.yaml
   custom_phrase.txt
