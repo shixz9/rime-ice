@@ -41,14 +41,16 @@
 ```bash
 make -C others/script/ build
 make -C others/script/ lint
+make -C others/script/ test
 ```
 
 - `build`：生成、去重、排序、校验词库和 OpenCC 映射文件，依赖 Go 环境。
 - `lint`：校验 YAML 和 Lua，依赖 `yamllint` 和 `luacheck`。
+- `test`：运行 Lua/设置面板单测，依赖 `pip install lupa`（见 `others/script/requirements-dev.txt`）。
 
 修改词库或生成源文件后，运行 `make -C others/script/ build`。此脚本至少需要 90 s 才能完成，请注意等待。
 
-修改配置（default.yaml、weasel.yaml、squirrel.yaml、*.schema.yaml）和 lua 文件后，先安装 yamllint 和 luarocks 和 luacheck（`luarocks install luacheck`），然后运行 `make -C others/script/ lint` 进行校验。
+修改配置（default.yaml、squirrel.yaml、*.schema.yaml）和 lua 文件后，先安装 yamllint 和 luarocks 和 luacheck（`luarocks install luacheck`），然后运行 `make -C others/script/ lint` 进行校验。
 
 ## 主要文件和作用
 

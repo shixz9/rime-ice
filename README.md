@@ -2,7 +2,7 @@
 
 ## 🎯 实现成果概览
 
-为雾凇拼音及小狼毫（Weasel）输入法完整实现中英双向释义与注释显示功能：
+为雾凇拼音及鼠须管（Squirrel）输入法完整实现中英双向释义与注释显示功能：
 
 1. **中译英**：输入中文（单字/词组）时，候选词旁以注释形式展示 CC-CEDICT 英文释义。
 2. **英译中**：输入英文单词时，候选词旁以注释形式展示 ECDICT 中文简明释义。
@@ -15,14 +15,15 @@ others/qingjian_glossary_en.tsv，232,213 词）。
    - 将青简精校词库作为第一优先级源，自动规范词性与无换行空格，并将原词库作为低频/专名补充兜底
    - 使用 OpenCC 的二进制 Trie 格式（.ocd2），通过 `opencc_dict` 工具编译，极速加载（低于10毫秒级），低资源占用。
 4. **字体与颜色高度可定制**：
-   - 释义字号预设为 `12pt`（候选词为 `14pt`，稍小且层次分明）。
-   - 支持在 `weasel.yaml` 或 `weasel.custom.yaml` 中自由定制字体、字号以及普通/高亮状态下的注释颜色。
+   - 候选字号由 `squirrel.custom.yaml` 的 `style/font_point` 控制；注释可用 `style/comment_font_point` 单独设小一点。
+   - 支持在 `squirrel.yaml` 或 `squirrel.custom.yaml` 中自由定制字体、字号以及普通/高亮状态下的注释颜色。
 ![rime-ice](https://github.mianao.info/https://raw.githubusercontent.com/harry10086/picx-images-hosting/master/Rime/rime-ice.webp)
 
 5. **Markdown 语法速记词库与输入翻译器**：
    - 预设 `55` 个 Markdown 语法词条，涵盖标题、列表、引用、链接、表格等。
    - 触发方式：输入 `Md` 或 `mD` + 符号/关键词。
    - 特色：支持一键生成各类表格、待办事项、不同级别的标题。
+   - 注意：成对符号的“光标自动居中”依赖 Windows 的 `rime_cursor.dll`；macOS 上会关闭该功能，Markdown 模板仍正常上屏，只是光标停在右侧。
 
 > [!TIP]
 > 感谢青简输入法的词库：[青简 Qingjian：用 Rust 写的拼音输入法，候选词旁多一条正在学的语言的译词](https://github.com/qingjian-team/qingjian)
@@ -31,56 +32,57 @@ others/qingjian_glossary_en.tsv，232,213 词）。
 
 | 文件路径 | 类型 | 说明 |
 | :--- | :---: | :--- |
-| [`others/script/build_dict_opencc.py`](file:///d:/GitHub/rime-ice/others/script/build_dict_opencc.py) | **新建** | 词典转换构建脚本，将 ECDICT 与 CEDICT 转换为 OpenCC 格式 |
-| [`opencc/ecdict.txt`](file:///d:/GitHub/rime-ice/opencc/ecdict.txt) | **新建** | 9.2 万条英汉词典数据（OpenCC Trie 格式） |
-| [`opencc/ecdict.ocd2`](file:///d:/GitHub/rime-ice/opencc/ecdict.ocd2) | **新建** | 英汉二进制双数组 Trie 词库 |
-| [`opencc/ecdict.json`](file:///d:/GitHub/rime-ice/opencc/ecdict.json) | **新建** | 英汉词典 OpenCC 配置文件 |
-| [`opencc/cedict.txt`](file:///d:/GitHub/rime-ice/opencc/cedict.txt) | **新建** | 11.4 万条汉英词典数据（OpenCC Trie 格式） |
-| [`opencc/cedict.ocd2`](file:///d:/GitHub/rime-ice/opencc/cedict.ocd2) | **新建** | 汉英二进制双数组 Trie 词库 |
-| [`opencc/cedict.json`](file:///d:/GitHub/rime-ice/opencc/cedict.json) | **新建** | 汉英词典 OpenCC 配置文件 |
-| [`lua/dict_comment_filter.lua`](file:///d:/GitHub/rime-ice/lua/dict_comment_filter.lua) | **新建** | 双向词典释义滤镜，负责提取释义、字数截断与注释拼接 |
-| [`lua/dict_commit_processor.lua`](file:///d:/GitHub/rime-ice/lua/dict_commit_processor.lua) | **新建** | 词典释义快捷上屏处理器 |
-| [`lua/markdown_translator.lua`](file:///d:/GitHub/rime-ice/lua/markdown_translator.lua) | **新建** | Markdown 语法翻译器，负责匹配 `Md` / `mD` 前缀与关键词生成语法候选 |
-| [`lua/markdown_processor.lua`](file:///d:/GitHub/rime-ice/lua/markdown_processor.lua) | **新建** | Markdown 符号光标联动处理器，上屏成对符号/代码块后自动把光标定位到居中位置 |
-| [`others/script/rime_cursor.rs`](file:///d:/GitHub/rime-ice/others/script/rime_cursor.rs) | **新建** | 原生 Windows 光标定位轻量级动态链接库 C/Rust 源码 |
-| [`others/script/rime_cursor.dll`](file:///d:/GitHub/rime-ice/others/script/rime_cursor.dll) | **新建** | 编译后的原生光标控制 DLL 模块，无弹窗、零延迟微调输入光标 |
-| [`rime_ice.schema.yaml`](file:///d:/GitHub/rime-ice/rime_ice.schema.yaml) | **修改** | 挂载双向词典释义、词典快捷上屏与 Markdown 语法输入/光标定位插件 |
+| [`others/script/build_dict_opencc.py`](./others/script/build_dict_opencc.py) | **新建** | 词典转换构建脚本，将 ECDICT 与 CEDICT 转换为 OpenCC 格式 |
+| [`opencc/ecdict.txt`](./opencc/ecdict.txt) | **新建** | 9.2 万条英汉词典数据（OpenCC Trie 格式） |
+| [`opencc/ecdict.ocd2`](./opencc/ecdict.ocd2) | **新建** | 英汉二进制双数组 Trie 词库 |
+| [`opencc/ecdict.json`](./opencc/ecdict.json) | **新建** | 英汉词典 OpenCC 配置文件 |
+| [`opencc/cedict.txt`](./opencc/cedict.txt) | **新建** | 11.4 万条汉英词典数据（OpenCC Trie 格式） |
+| [`opencc/cedict.ocd2`](./opencc/cedict.ocd2) | **新建** | 汉英二进制双数组 Trie 词库 |
+| [`opencc/cedict.json`](./opencc/cedict.json) | **新建** | 汉英词典 OpenCC 配置文件 |
+| [`lua/dict_comment_filter.lua`](./lua/dict_comment_filter.lua) | **新建** | 双向词典释义滤镜，负责提取释义、字数截断与注释拼接 |
+| [`lua/dict_commit_processor.lua`](./lua/dict_commit_processor.lua) | **新建** | 词典释义快捷上屏处理器 |
+| [`lua/markdown_translator.lua`](./lua/markdown_translator.lua) | **新建** | Markdown 语法翻译器，负责匹配 `Md` / `mD` 前缀与关键词生成语法候选 |
+| [`lua/markdown_processor.lua`](./lua/markdown_processor.lua) | **新建** | Markdown 符号光标联动处理器（自动居中仅 Windows 可用，macOS 会关闭） |
+| [`others/script/rime_cursor.rs`](./others/script/rime_cursor.rs) | **新建** | 原生 Windows 光标定位轻量级动态链接库 C/Rust 源码 |
+| [`others/script/rime_cursor.dll`](./others/script/rime_cursor.dll) | **新建** | 编译后的原生光标控制 DLL 模块，无弹窗、零延迟微调输入光标 |
+| [`rime_ice.schema.yaml`](./rime_ice.schema.yaml) | **修改** | 挂载双向词典释义、词典快捷上屏与 Markdown 语法输入/光标定位插件 |
 | `double_pinyin*.schema.yaml` | **修改** | 全系双拼方案（自然码、小鹤、微软、搜狗、ABC、加加、紫光）同步挂载词典释义与 Markdown 语法输入 |
-| [`melt_eng.schema.yaml`](file:///d:/GitHub/rime-ice/melt_eng.schema.yaml) | **修改** | 独立英文输入方案同步挂载 `dict_comment_filter` |
-| [`weasel.yaml`](file:///d:/GitHub/rime-ice/weasel.yaml) | **修改** | 将 `comment_font_point` 设置为 `12`（略小于全局 `14pt`） |
+| [`melt_eng.schema.yaml`](./melt_eng.schema.yaml) | **修改** | 独立英文输入方案同步挂载 `dict_comment_filter` |
+| [`squirrel.custom.yaml`](./squirrel.custom.yaml) | **修改** | 主题（native 跟随系统）、候选字体/字号、圆角、内嵌编码 |
 
 ## ⚙️ 个性化配置指南
 > [!TIP]
-> 无须手动修改YAML文件，直接使用小狼毫配置工具：[https://github.com/harry10086/WeaselTune](https://github.com/harry10086/WeaselTune)
+> 本机为 macOS/鼠须管：双击仓库根目录的 `打开设置面板.command` 即可用图形界面修改方案、按键、字体、释义档位和词库，不必手改 YAML。
+> 下文涉及 `squirrel.yaml` 的路径同样适用于 `squirrel.custom.yaml`；`weasel.yaml` 已在本地移除。
 
 ![](https://github.mianao.info/https://raw.githubusercontent.com/harry10086/picx-images-hosting/master/Rime/dashboard.webp)
 
 ### 1. 调整释义开关与最大长度
 
-在 [`rime_ice.schema.yaml`](file:///d:/GitHub/rime-ice/rime_ice.schema.yaml#L164-L170)（或用户补丁 `rime_ice.custom.yaml`）中配置：
+在 [`rime_ice.schema.yaml`](./rime_ice.schema.yaml)（或用户补丁 `rime_ice.custom.yaml`）中配置：
 
 ```yaml
 dict_comment_filter:
   enable_chinese_to_english: true
   enable_english_to_chinese: true
-  max_defs: 2                       # 候选框中显示的释义项数（超出才会显示“…”）
-  max_length: 50                    # 单条最大字符数上限
+  max_defs: 3                       # 候选框中显示的释义项数（超出才会显示“…”）
+  max_length: 60                    # 单条最大字符数上限
 ```
 
 > [!TIP]
-> 如果您觉得释义过长影响候选框宽度，可将 `max_length` 调小（例如 `20` 或 `25`）；如希望完整显示，可调大至 `50`。
+> 如果您觉得释义过长影响候选框宽度，可将 `max_length` 调小（例如 `20` 或 `25`）；如希望完整显示，可调大至 `60`。`max_defs` 建议保持 3，才能用 `Ctrl+T` 上屏第 3 个译词。
 
 
-### 2. 调整小狼毫（Weasel）字体大小与颜色
+### 2. 调整鼠须管（Squirrel）字体大小与颜色
 
-在 [`weasel.yaml`](file:///d:/GitHub/rime-ice/weasel.yaml) 或用户补丁 `weasel.custom.yaml` 中配置：
+在 [`squirrel.yaml`](./squirrel.yaml) 或用户补丁 `squirrel.custom.yaml` 中配置：
 
 #### (1) 注释字体大小与字体族
 ```yaml
 style:
-  font_point: 14            # 候选文字字号
-  comment_font_point: 12    # 释义注释字号（建议比候选文字小 1~3 pt）
-  comment_font_face: "Segoe UI, Microsoft YaHei"  # 注释字体
+  font_point: 20            # 候选文字字号
+  comment_font_point: 16    # 释义注释字号（建议比候选文字小 1~3 pt）
+  comment_font_face: "PingFang SC"  # 注释字体
 ```
 
 #### (2) 注释字体颜色
@@ -98,10 +100,13 @@ preset_color_schemes:
 #### 词典释义快捷上屏快捷键
 | 快捷键组合 | 推荐理由与体验 | 输出示例 |
 | :--- | :--- | :--- |
-| **`Ctrl + D`** (🌟 强烈推荐) | **Dict / 词典**，左手单手瞬间完成，100% 不冲突且符合直觉 | 选中「你好」按 `Ctrl+D` $\rightarrow$ `你好 (hello; hi; how are you)` |
-| **`\`** (反斜杠键) | **无需按 Ctrl 组合键**，候选框挑好词后直接按 `\` 键立即输出 | 选中「apple」按 `\` $\rightarrow$ `apple (n. 苹果, 苹果树)` |
-| **`Ctrl + E`** | **Explain / 释义**，单手易按 | 同上 |
-| **`Ctrl + Shift + 回车`** | 避开系统拦截的回车组合键 | 同上 |
+| **`Ctrl + D`** (🌟 强烈推荐) | **Dict / 词典**，左手单手瞬间完成，100% 不冲突且符合直觉 | 选中「你好」按 `Ctrl+D` $\rightarrow$ `你好 (hello; hi)` |
+| **`\`** (反斜杠键) | **无需按 Ctrl 组合键**，候选框挑好词后直接按 `\` 键立即输出 | 选中「apple」按 `\` $\rightarrow$ `apple (苹果)` |
+| **`Ctrl + E`** | 上屏注释中的第 1 个英文译词 | `Ctrl+E` $\rightarrow$ `hello` |
+| **`Ctrl + R` / `Ctrl + T`** | 上屏第 2 / 第 3 个英文译词 | `Ctrl+R` $\rightarrow$ `hi` |
+| **`Ctrl + Shift + 回车`** | 避开系统拦截的回车组合键 | 同 `Ctrl+D`，上屏候选 + 完整释义 |
+
+> 说明：`Ctrl+D` / `\` 上屏前会剥掉 `¤` 学习元数据和 `n.` / `int.` 等词性，只保留纯释义；`Ctrl+E/R/T` 仅在注释含 ASCII 分号时生效，译词不足时会吞键，避免 `Ctrl+R/T` 穿透到浏览器等宿主应用。
 
 #### 释义实时开关快捷键
 * **快捷键**：**`Ctrl + Shift + E`**
@@ -173,13 +178,14 @@ local MD_DATA = {
 
 ## 🚀 生效与重新部署
 
-完成修改后，请重新部署小狼毫：
-1. 右键点击 Windows 任务栏托盘的小狼毫图标。
-2. 点击 **「重新部署」 (Deploy)**（或按快捷键 `Ctrl + \`` 打开方案菜单后按重新部署）。
-3. 部署完成后即可在打字时享受即时双向词典翻译提示！
+完成修改后，请重新部署鼠须管：
+1. 点击菜单栏的鼠须管图标 →「重新部署」。
+2. 或在终端执行：`"/Library/Input Methods/Squirrel.app/Contents/MacOS/Squirrel" --reload`。
+3. 词库/方案有变化时，主表（约 97 MB）可能需要 1–4 分钟；只改 Lua 或主题通常只需几秒。
+4. 部署完成后即可在打字时享受即时双向词典翻译提示。
 
 **雾凇拼音使用参考：**
-[Rime输入法小狼毫简明使用手册：https://mianao.info/3990756e](https://mianao.info/3990756e)
+[Rime 输入法简明使用手册：https://mianao.info/3990756e](https://mianao.info/3990756e)
 
 ---
 

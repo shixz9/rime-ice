@@ -1,0 +1,3 @@
+# Python 测试依赖（make -C others/script test）
+# 系统工具（非 pip）：yamllint、luacheck（luarocks install luacheck）
+lupa>=2.0

@@ -1,6 +1,8 @@
 .DEFAULT_GOAL := default
 
-.PHONY: default build lint lint-yaml lint-lua lint-lua-format smoke
+PYTHON ?= python3
+
+.PHONY: default build lint lint-yaml lint-lua lint-lua-format smoke test
 
 default:
 	@:
@@ -23,3 +25,9 @@ lint-lua-format:
 
 smoke:
 	bash ./smoke/run.sh rime_ice
+
+test:
+	$(PYTHON) test_settings_server.py
+	$(PYTHON) test_dict_comment_filter.py
+	$(PYTHON) test_comment_rank_commit.py
+	$(PYTHON) test_dict_commit_processor.py
