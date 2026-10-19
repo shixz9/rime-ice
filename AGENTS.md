@@ -5,7 +5,7 @@
 ## Rules
 
 - 禁止删除任何文件。
-- 禁止修改 README.md。
+- 禁止修改 README.md 的上游正文（从「# 雾凇拼音」开始）；本地功能说明段可按需更新。
 - 修改或添加内容对文件时，按「主要文件和作用」部分的说明放置到对应文件。如果仍有不清楚，阅读文件头的注释做确认。
 - 修改配置、词典后，按「测试和构建命令」部分的说明校验，确保没有错误。
 - 词频默认使用 100，如有重码（编码相同），根据日常使用习惯调整词频权重的值。
@@ -74,7 +74,7 @@ make -C others/script/ test
 - `*.dict.yaml`：主词库文件，在文件头引用具体词库文件。此类文件的具体格式请参考既有文件的写法，和标准 yaml 有所不同。
 - `recipe.yaml`：plum 默认配方。
 - `symbols*`：控制 `v`/`V` 模式下的符号输入。
-- `weasel.yaml`：小狼毫前端配置。
-- `squirrel.yaml`：鼠须管前端配置。
+- `weasel.yaml`：小狼毫前端配置（Windows；本地已移除，macOS 用 `squirrel.yaml`）。
+- `squirrel.yaml` / `squirrel.custom.yaml`：鼠须管前端配置与本地界面补丁（主题、字体等）。
 - `default.yaml`：全局默认配置，控制启用方案和通用行为。
 - `custom_phrase.txt`：全拼自定义短语。

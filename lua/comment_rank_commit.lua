@@ -7,7 +7,8 @@
 -- 英文候选的中文注释用全角「；」，不会进入此分支，按键放行给编辑器原逻辑。
 -- 候选无注释时吞键（不输出），避免回落 commit_comment 上屏空字符串。
 -- 译词不足时：Ctrl+R/T 吞键，避免按键穿透到宿主应用（浏览器刷新/新标签页）；
--- Ctrl+E 的单条注释仍放行给 editor/commit_comment，由编辑器上屏整条注释。
+-- Ctrl+E 的单条注释：带 /音标/ 时直接上屏第 1 个词（去掉音标/元数据），
+-- 没有音标时仍放行给 editor/commit_comment，由编辑器上屏整条注释。
 -- 注释条数上限见 dict_comment_filter.lua 的 max_defs（默认 3 条）。
 --
 -- 注释中每个译词可能带学习元数据尾巴（音标 /.../、◆、★、考试标签、
@@ -30,8 +31,19 @@ local function strip_meta(item)
         end
         head[#head + 1] = tok
     end
-    if #head == 0 then return item end
+    if #head == 0 then return "" end
     return table.concat(head, " ")
+end
+
+-- 判断注释是否带学习元数据（音标 / ★ / ◆ / BNC / FRQ）。
+-- 单条注释只有带元数据时才需要在本处理器里剥掉并上屏；
+-- 纯文本单条注释仍交给 editor/commit_comment。
+local function has_meta(s)
+    return s:find("/", 1, true) ~= nil
+        or s:find("◆", 1, true) ~= nil
+        or s:find("★", 1, true) ~= nil
+        or s:find("BNC", 1, true) ~= nil
+        or s:find("FRQ", 1, true) ~= nil
 end
 
 function M.func(key, env)
@@ -60,9 +72,20 @@ function M.func(key, env)
     if comment == "" then return kAccepted end
 
     -- 中译英注释以 ASCII "; " 拼接；无分号（单词数不足）时：
-    --   Ctrl+E → 交给编辑器 commit_comment（上屏整条注释）
-    --   Ctrl+R/T → 没有第 2/3 项可上屏，吞键避免穿透到宿主应用
+    --   Ctrl+E + 带音标 → 直接上屏第 1 个词（剥掉 /音标/ 与元数据）
+    --   Ctrl+E + 无音标 → 交给编辑器 commit_comment（上屏整条注释）
+    --   Ctrl+R/T       → 没有第 2/3 项可上屏，吞键避免穿透到宿主应用
     if not comment:find(";") then
+        if idx == 1 and has_meta(comment) then
+            local item = strip_meta(comment)
+            item = item:gsub("^[ \t\n\v\f\r]+", ""):gsub("[ \t\n\v\f\r]+$", "")
+            if item ~= "" then
+                env.engine:commit_text(item)
+                ctx:clear()
+                return kAccepted
+            end
+            return kAccepted
+        end
         if idx == 1 then return kNoop end
         return kAccepted
     end

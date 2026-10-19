@@ -29,7 +29,7 @@ patch:
   engine/processors:
     - lua_processor@*select_character
     - lua_processor@*dict_commit_processor
-    - lua_processor@*comment_rank_commit   # 新增：中文候选英文注释 Ctrl+E/R 按顺位上屏
+    - lua_processor@*comment_rank_commit   # 新增：中文候选英文注释 Ctrl+E/R/T 按顺位上屏
     - lua_processor@*markdown_processor
     - ascii_composer
     - recognizer

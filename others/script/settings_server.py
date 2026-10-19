@@ -391,7 +391,7 @@ def gen_rime_ice_custom(m, upstream_processors, upstream_bindings=None, upstream
     for p in procs:
         L.append("    - %s" % p)
         if p.endswith("dict_commit_processor") and m.get("rank_commit"):
-            L.append("    - lua_processor@*comment_rank_commit   # 新增：中文候选英文注释 Ctrl+E/R 按顺位上屏")
+            L.append("    - lua_processor@*comment_rank_commit   # 新增：中文候选英文注释 Ctrl+E/R/T 按顺位上屏")
     L.append("")
     return "\n".join(L)
 
@@ -603,7 +603,7 @@ class Handler(BaseHTTPRequestHandler):
         if got["style"]["layout"] != st.get("layout"):
             errs.append("候选布局不符")
         if bool(got.get("rank_commit")) != bool(m.get("rank_commit")):
-            errs.append("Ctrl+E/R 顺位上屏开关不符")
+            errs.append("Ctrl+E/R/T 顺位上屏开关不符")
         if bool(got.get("comment_phonetic")) != bool(m.get("comment_phonetic", True)):
             errs.append("学习元数据音标档开关不符")
         if bool(got.get("comment_detail")) != bool(m.get("comment_detail", False)):
